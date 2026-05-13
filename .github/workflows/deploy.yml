@@ -1,0 +1,29 @@
+name: Deploy Lambdas
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy-admin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_GJ }}:role/github-actions-deploy
+          aws-region: us-east-1
+
+      - name: Package and deploy gj-admin
+        run: |
+          cd lambdas/gj-admin
+          zip -r /tmp/gj-admin.zip .
+          aws lambda update-function-code \
+            --function-name gj-admin \
+            --zip-file fileb:///tmp/gj-admin.zip
+          echo "✅ gj-admin deployed"
