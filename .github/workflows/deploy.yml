@@ -78,12 +78,4 @@ jobs:
           
           echo "✅ gj-poland-counter deployed"
 
-      - name: Create Function URL (if not exists)
-        run: |
-          URL=$(aws lambda get-function-url-config --function-name gj-poland-counter --query FunctionUrl --output text 2>/dev/null || echo "")
-          if [ -z "$URL" ] || [ "$URL" = "None" ]; then
-            aws lambda add-permission --function-name gj-poland-counter --statement-id public-access --action lambda:InvokeFunctionUrl --principal "*" --function-url-auth-type NONE 2>/dev/null || true
-            aws lambda create-function-url-config --function-name gj-poland-counter --auth-type NONE 2>/dev/null || echo "Function URL already exists" --cors '{"AllowOrigins":["*"],"AllowMethods":["GET","POST"]}'
-            URL=$(aws lambda get-function-url-config --function-name gj-poland-counter --query FunctionUrl --output text)
-          fi
-          echo "Counter URL: $URL"
+
