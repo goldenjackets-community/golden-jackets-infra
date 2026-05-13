@@ -27,3 +27,22 @@ jobs:
             --function-name gj-admin \
             --zip-file fileb:///tmp/gj-admin.zip
           echo "✅ gj-admin deployed"
+
+  deploy-apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_GJ }}:role/github-actions-deploy
+          aws-region: us-east-1
+
+      - name: Package and deploy gj-apply
+        run: |
+          cd lambdas/gj-apply
+          zip -r /tmp/gj-apply.zip .
+          aws lambda update-function-code \
+            --function-name gj-apply \
+            --zip-file fileb:///tmp/gj-apply.zip
+          echo "✅ gj-apply deployed"
