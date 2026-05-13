@@ -1,11 +1,70 @@
 import json
 import urllib.request
-import urllib.parse
 import base64
 import os
 
 GITHUB_TOKEN = os.environ.get('GH_TOKEN', '')
 REPO = os.environ.get('GITHUB_REPO', 'goldenjackets-community/golden-jackets-brazil')
+
+def gh_api(method, path, data=None):
+    url = f'https://api.github.com/repos/{REPO}/{path}'
+    body = json.dumps(data).encode() if data else None
+    req = urllib.request.Request(url, data=body, method=method,
+        headers={'Authorization': f'token {GITHUB_TOKEN}', 'Accept': 'application/vnd.github.v3+json'})
+    try:
+        resp = urllib.request.urlopen(req)
+        return json.loads(resp.read())
+    except urllib.error.HTTPError as e:
+        err_body = e.read().decode()
+        if e.code == 422 and 'already exists' in err_body:
+            return {'exists': True}
+        raise Exception(f'HTTP Error {e.code}: {err_body[:200]}')
+
+def get_file(path, branch):
+    try:
+        data = gh_api('GET', f'contents/{path}?ref={branch}')
+        content = base64.b64decode(data['content']).decode()
+        return content, data['sha']
+    except:
+        return None, None
+
+def put_file(path, content, message, branch, sha=None):
+    payload = {'message': message, 'content': base64.b64encode(content.encode()).decode(), 'branch': branch}
+    if sha:
+        payload['sha'] = sha
+    return gh_api('PUT', f'contents/{path}', payload)
+
+def build_card(name, city, state, date, linkedin, member_type, photo_path):
+    if member_type == 'golden':
+        return f"""      <div class="member-card" data-state="{state}">
+        <img src="{photo_path}" alt="{name}" class="photo">
+        <h3>{name}</h3>
+        <div class="location">{city}</div>
+        <div class="tags">
+          <span class="tag">Golden Jacket</span>
+          <span class="tag">Member</span>
+        </div>
+        <div class="certified">Certified on {date}</div>
+        <div class="socials">
+          <a href="{linkedin}" target="_blank">in</a>
+        </div>
+      </div>"""
+    else:
+        certs = '11' if '11' in member_type else '10'
+        away = '1' if certs == '11' else '2'
+        return f"""      <div class="member-card challenger" data-state="{state}">
+        <img src="{photo_path}" alt="{name}" class="photo">
+        <h3>{name}</h3>
+        <div class="location">{city}</div>
+        <div class="tags">
+          <span class="tag">{certs}/12 Certifications</span>
+          <span class="tag">Challenger</span>
+        </div>
+        <div class="certified" style="color:#fff;font-weight:700;">{away} away from Golden Jacket \U0001f525</div>
+        <div class="socials">
+          <a href="{linkedin}" target="_blank">in</a>
+        </div>
+      </div>"""
 
 def lambda_handler(event, context):
     cors = {
@@ -22,7 +81,7 @@ def lambda_handler(event, context):
         name = body['name']
         city = body['city']
         state = body['state']
-        date = body['date']
+        date = body.get('date', '')
         linkedin = body['linkedin']
         email = body.get('email', '')
         member_type = body.get('memberType', 'golden')
@@ -31,75 +90,42 @@ def lambda_handler(event, context):
         consent = body.get('consentAccepted', False)
         consent_date = body.get('consentDate', '')
 
-        # Determine file name for photo
-        safe_name = name.lower().replace(' ', '-').replace('.', '')
+        safe_name = name.lower().replace(' ', '-').replace('.', '').replace("'", '')
         photo_ext = photo_name.split('.')[-1] if photo_name else 'jpg'
         photo_path = f'assets/members/{safe_name}.{photo_ext}'
-
-        # Create branch name
         branch = f'add-member-{safe_name}'
 
-        # Get default branch SHA
-        req = urllib.request.Request(
-            f'https://api.github.com/repos/{REPO}/git/ref/heads/main',
-            headers={'Authorization': f'token {GITHUB_TOKEN}', 'Accept': 'application/vnd.github.v3+json'}
-        )
-        resp = urllib.request.urlopen(req)
-        sha = json.loads(resp.read())['object']['sha']
+        # Get main branch SHA
+        ref_data = gh_api('GET', 'git/ref/heads/main')
+        sha = ref_data['object']['sha']
 
         # Create branch
-        data = json.dumps({'ref': f'refs/heads/{branch}', 'sha': sha}).encode()
-        req = urllib.request.Request(
-            f'https://api.github.com/repos/{REPO}/git/refs',
-            data=data,
-            headers={'Authorization': f'token {GITHUB_TOKEN}', 'Accept': 'application/vnd.github.v3+json'}
-        )
-        try:
-            urllib.request.urlopen(req)
-        except urllib.error.HTTPError as e:
-            if e.code == 422:  # branch exists
-                pass
-            else:
-                raise
+        gh_api('POST', 'git/refs', {'ref': f'refs/heads/{branch}', 'sha': sha})
 
-        # Upload photo if provided
+        # Upload photo
         if photo_b64:
-            data = json.dumps({
-                'message': f'Add photo for {name}',
-                'content': photo_b64,
-                'branch': branch
-            }).encode()
-            req = urllib.request.Request(
-                f'https://api.github.com/repos/{REPO}/contents/{photo_path}',
-                data=data,
-                method='PUT',
-                headers={'Authorization': f'token {GITHUB_TOKEN}', 'Accept': 'application/vnd.github.v3+json'}
-            )
-            urllib.request.urlopen(req)
+            put_file(photo_path, '', f'Add photo for {name}', branch)
+            # Use raw API for binary
+            payload = {'message': f'Add photo for {name}', 'content': photo_b64, 'branch': branch}
+            gh_api('PUT', f'contents/{photo_path}', payload)
 
-        # Always create an application file (ensures branch has a commit for PR)
-        app_data = json.dumps({
-            'name': name, 'city': city, 'state': state, 'date': date,
-            'linkedin': linkedin, 'email': email, 'memberType': member_type,
-            'photo': photo_path if photo_b64 else '', 'consent': consent, 'consentDate': consent_date
-        }, indent=2)
-        app_content = base64.b64encode(app_data.encode()).decode()
-        data = json.dumps({
-            'message': f'Application: {name}',
-            'content': app_content,
-            'branch': branch
-        }).encode()
-        req = urllib.request.Request(
-            f'https://api.github.com/repos/{REPO}/contents/applications/{safe_name}.json',
-            data=data,
-            method='PUT',
-            headers={'Authorization': f'token {GITHUB_TOKEN}', 'Accept': 'application/vnd.github.v3+json'}
-        )
-        urllib.request.urlopen(req)
+        # Get index.html and add card
+        index_content, index_sha = get_file('index.html', branch)
+        if index_content:
+            card = build_card(name, city, state, date, linkedin, member_type, photo_path)
+            if member_type == 'golden' or member_type == '':
+                marker = '<!-- END_GOLDEN -->'
+                if marker not in index_content:
+                    marker = '\U0001f396\ufe0f Alumni'
+            else:
+                marker = '<!-- END_CHALLENGERS -->'
+            
+            if marker in index_content:
+                index_content = index_content.replace(marker, card + '\n' + marker)
+                put_file('index.html', index_content, f'Add member card: {name}', branch, index_sha)
 
         # Create PR
-        pr_title = f'New Member: {name}'
-        pr_body = f'''## New Member Application
+        pr_body = f"""## New Member Application
 
 **Name:** {name}
 **City:** {city}
@@ -113,26 +139,18 @@ def lambda_handler(event, context):
 
 ---
 _Auto-generated by the Golden Jackets apply form._
-'''
-
-        data = json.dumps({
-            'title': pr_title,
+"""
+        pr_data = gh_api('POST', 'pulls', {
+            'title': f'New Member: {name}',
             'body': pr_body,
             'head': branch,
             'base': 'main'
-        }).encode()
-        req = urllib.request.Request(
-            f'https://api.github.com/repos/{REPO}/pulls',
-            data=data,
-            headers={'Authorization': f'token {GITHUB_TOKEN}', 'Accept': 'application/vnd.github.v3+json'}
-        )
-        resp = urllib.request.urlopen(req)
-        pr_data = json.loads(resp.read())
+        })
 
         return {
             'statusCode': 200,
             'headers': cors,
-            'body': json.dumps({'message': f'Application submitted! PR #{pr_data["number"]} created.', 'pr': pr_data['html_url']})
+            'body': json.dumps({'message': f"Application submitted! PR #{pr_data.get('number','')} created.", 'pr': pr_data.get('html_url','')})
         }
 
     except Exception as e:
