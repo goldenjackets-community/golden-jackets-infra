@@ -6,14 +6,7 @@ dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
 table = dynamodb.Table('gj-poland-visitors')
 
 def lambda_handler(event, context):
-    cors = {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
-    }
-    
-    if event.get('requestContext', {}).get('http', {}).get('method') == 'OPTIONS':
-        return {'statusCode': 200, 'headers': cors, 'body': ''}
+
 
     table.update_item(
         Key={'id': 'counter'},
@@ -40,7 +33,7 @@ def lambda_handler(event, context):
 
     return {
         'statusCode': 200,
-        'headers': cors,
+        'headers': {},
         'body': json.dumps({
             'total_visits': int(item.get('total_visits', 0)),
             'unique_visitors': int(item.get('unique_visitors', 0))
