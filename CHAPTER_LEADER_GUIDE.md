@@ -169,7 +169,7 @@ Add a new line inside the translations object:
 
 ---
 
-## 7. Managing Lounge Users
+## 7. Admin Panel — All Tools
 
 ### Access the Admin Panel
 
@@ -177,22 +177,58 @@ Add a new line inside the translations object:
 2. Log in with your admin email
 3. Click the **⚙️ Admin** button (top right)
 
-### Create a new user
+### 📋 List Users
+
+Shows all Lounge members in your chapter with their status (Confirmed or Pending).
+
+### 🌍 All Chapters (Global Admin only)
+
+Shows users from ALL chapters. Only visible to the Founder.
+
+### ➕ Create User
 
 1. Click **Create User**
-2. Enter their email
+2. Enter their name and email
 3. Click **Create & Send Invite**
-4. They'll receive an email with temporary password
+4. They receive an email with a temporary password
+5. On first login, they set their own password
 
-### Delete a user
+### 🔄 Resend Pending
+
+Resends invitation emails to all users who haven't logged in yet (status: FORCE_CHANGE_PASSWORD). Useful when someone lost their invite email.
+
+### 🗑️ Delete User
 
 1. Click **Delete User**
-2. Enter their email
-3. Confirm
+2. Enter the email of the user to remove
+3. Confirm — this permanently removes their Lounge access
 
-### List users
+### 💾 Backup Status
 
-Click **List Users** to see all members in your chapter.
+Shows the latest backups of your chapter's S3 bucket. Backups run daily (7-day retention). Statuses:
+- **COMPLETED** — backup successful
+- **RUNNING** — backup in progress
+- **FAILED** — check with Ricardo
+
+### 🔄 Restore Backup (Global Admin only)
+
+Restores the site from the latest backup. Use only if the site is broken and you need to roll back. Only the Founder can execute this.
+
+### 📊 Export CSV
+
+Exports the list of all Lounge users in your chapter as a CSV file (email, status, creation date). Useful for reporting.
+
+### 📈 Show Metrics
+
+Displays site visitor metrics (total visits, unique visitors). Data comes from the visitor counter on the site.
+
+### ⬆️ Promote Challenger
+
+Promotes a Challenger (11/12 certs) to Golden Jacket status. Enter their email — this updates their role in the system.
+
+### 📋 Backlog
+
+Shows the project backlog (from `BACKLOG.md` in your repo). Use this to track what's done and what's pending for your chapter.
 
 ---
 
