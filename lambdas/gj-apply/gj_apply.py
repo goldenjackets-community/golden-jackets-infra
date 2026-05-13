@@ -77,6 +77,26 @@ def lambda_handler(event, context):
             )
             urllib.request.urlopen(req)
 
+        # Always create an application file (ensures branch has a commit for PR)
+        app_data = json.dumps({
+            'name': name, 'city': city, 'state': state, 'date': date,
+            'linkedin': linkedin, 'email': email, 'memberType': member_type,
+            'photo': photo_path if photo_b64 else '', 'consent': consent, 'consentDate': consent_date
+        }, indent=2)
+        app_content = base64.b64encode(app_data.encode()).decode()
+        data = json.dumps({
+            'message': f'Application: {name}',
+            'content': app_content,
+            'branch': branch
+        }).encode()
+        req = urllib.request.Request(
+            f'https://api.github.com/repos/{REPO}/contents/applications/{safe_name}.json',
+            data=data,
+            method='PUT',
+            headers={'Authorization': f'token {GITHUB_TOKEN}', 'Accept': 'application/vnd.github.v3+json'}
+        )
+        urllib.request.urlopen(req)
+
         # Create PR
         pr_title = f'New Member: {name}'
         pr_body = f'''## New Member Application
