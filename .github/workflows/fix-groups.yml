@@ -1,0 +1,49 @@
+name: Fix Cognito Groups
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  fix-groups:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_GJ }}:role/github-actions-deploy
+          aws-region: us-east-1
+
+      - name: Add all users to brazil group
+        run: |
+          POOL="us-east-1_Z0VzzrmIX"
+          
+          # Get all users
+          USERS=$(aws cognito-idp list-users --user-pool-id $POOL --query "Users[*].Username" --output text)
+          
+          for user in $USERS; do
+            EMAIL=$(aws cognito-idp admin-get-user --user-pool-id $POOL --username "$user" --query "UserAttributes[?Name=='email'].Value" --output text)
+            
+            # Skip Dawid (Poland)
+            if [ "$EMAIL" = "drabekdawid@gmail.com" ]; then
+              echo "⏭️ Skipping $EMAIL (Poland)"
+              continue
+            fi
+            
+            aws cognito-idp admin-add-user-to-group --user-pool-id $POOL --username "$user" --group-name brazil 2>/dev/null
+            echo "✅ $EMAIL → brazil"
+          done
+
+      - name: Create Leticia user
+        run: |
+          POOL="us-east-1_Z0VzzrmIX"
+          aws cognito-idp admin-create-user \
+            --user-pool-id $POOL \
+            --username "l.albuque.la@gmail.com" \
+            --user-attributes Name=email,Value=l.albuque.la@gmail.com Name=email_verified,Value=true \
+            --desired-delivery-mediums EMAIL 2>/dev/null || echo "User may already exist"
+          
+          aws cognito-idp admin-add-user-to-group --user-pool-id $POOL --username "l.albuque.la@gmail.com" --group-name brazil
+          echo "✅ Leticia created + added to brazil"
