@@ -4,7 +4,7 @@ import urllib.parse
 import base64
 import os
 
-GITHUB_TOKEN = os.environ.get('GITHUB_TOKEN', '')
+GITHUB_TOKEN = os.environ.get('GH_TOKEN', '')
 REPO = os.environ.get('GITHUB_REPO', 'goldenjackets-community/golden-jackets-brazil')
 
 def lambda_handler(event, context):
