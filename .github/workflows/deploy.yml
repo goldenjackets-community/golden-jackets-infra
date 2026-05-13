@@ -73,7 +73,7 @@ jobs:
               --runtime python3.12 \
               --handler gj_counter_pl.lambda_handler \
               --zip-file fileb:///tmp/gj-poland-counter.zip \
-              --role $(aws lambda get-function-configuration --function-name gj-visitor-counter --query Role --output text) \
+              --role arn:aws:iam::800712212925:role/gj-apply-lambda \
               --timeout 10
           
           echo "✅ gj-poland-counter deployed"
