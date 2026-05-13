@@ -1,0 +1,269 @@
+# Golden Jackets — Chapter Leader Operations Guide
+
+## Welcome, Chapter Leader! 🐝
+
+This guide covers everything you need to manage your Golden Jackets chapter site. Follow these instructions carefully to avoid breaking the site.
+
+---
+
+## Table of Contents
+
+1. [How the Site Works](#1-how-the-site-works)
+2. [How to Edit Files](#2-how-to-edit-files)
+3. [Adding a New Member](#3-adding-a-new-member)
+4. [Adding an Event](#4-adding-an-event)
+5. [Adding an Article/Talk](#5-adding-an-articletalk)
+6. [Translating Content](#6-translating-content)
+7. [Managing Lounge Users (Admin Panel)](#7-managing-lounge-users)
+8. [DO NOT TOUCH — Protected Files](#8-do-not-touch)
+9. [Troubleshooting](#9-troubleshooting)
+
+---
+
+## 1. How the Site Works
+
+```
+You edit files on GitHub
+        ↓
+GitHub Actions deploys automatically (~1 min)
+        ↓
+Site updates on your domain
+```
+
+- **Repository:** `github.com/goldenjackets-community/golden-jackets-[country]`
+- **Branch:** `master` (Poland) or `main` (Brazil)
+- **Every push triggers:** S3 upload → CloudFront cache clear → Smoke test
+- **If smoke test fails:** site stays on previous version (safe)
+
+---
+
+## 2. How to Edit Files
+
+### On GitHub (recommended for small changes)
+
+1. Go to your repo on GitHub
+2. Click the file you want to edit (e.g., `index.html`)
+3. Click the **pencil icon** ✏️ (top right)
+4. Make your changes
+5. Scroll down → write a short description of what you changed
+6. Click **"Commit changes"**
+7. Wait ~1 minute for deploy
+8. Refresh your site to verify
+
+### Locally (for bigger changes)
+
+```bash
+git clone https://github.com/goldenjackets-community/golden-jackets-[country].git
+cd golden-jackets-[country]
+# make your changes
+git add .
+git commit -m "short description of change"
+git push origin master
+```
+
+---
+
+## 3. Adding a New Member
+
+### Step 1: Add their card to `index.html`
+
+Find the section `🏆 Golden Jackets` and locate the last member card. Copy this template and paste it **before** the Alumni section:
+
+```html
+            <div class="member-card" data-state="XX">
+                <img src="assets/members/firstname-lastname.jpg" alt="Full Name" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:12px 12px 0 0;">
+                <h3>Full Name</h3>
+                <p class="location">City, State, Country</p>
+                <span class="tag">Golden Jacket</span>
+                <span class="tag">Member</span>
+                <p style="color:var(--text-muted);font-size:0.75em;line-height:1.6;">Certified on YYYY-MM-DD</p>
+                <a href="https://linkedin.com/in/username" target="_blank" rel="noopener noreferrer" style="color:var(--gold);font-size:1.2em;text-decoration:none;">in</a>
+            </div>
+```
+
+**Replace:**
+- `XX` → State/Voivodeship code (e.g., `SP`, `SL`, `MZ`)
+- `firstname-lastname.jpg` → their photo filename
+- `Full Name` → their name
+- `City, State, Country` → their location
+- `YYYY-MM-DD` → certification date
+- `linkedin.com/in/username` → their LinkedIn URL
+
+### Step 2: Add their photo
+
+- Upload a square photo (min 200x200px) to `assets/members/`
+- Name it: `firstname-lastname.jpg` (lowercase, no spaces)
+
+### Step 3: Update the stats in the ticker
+
+Find the ticker section and update the member count:
+
+```html
+<span>🏆 XX Members</span>
+```
+
+### Step 4: Create their Lounge access
+
+Go to your Admin panel → **Create User** → enter their email.
+
+---
+
+## 4. Adding an Event
+
+Find the `Upcoming Events` section in `index.html`. Copy this template:
+
+```html
+            <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;min-width:250px;max-width:300px;text-align:center;">
+                <div style="font-size:2em;margin-bottom:8px;">🇵🇱</div>
+                <h3 style="color:white;font-size:1em;margin-bottom:8px;">Event Name</h3>
+                <p style="color:var(--text-muted);font-size:0.85em;">📅 Month DD, YYYY</p>
+                <p style="color:var(--text-muted);font-size:0.8em;margin-top:8px;">City, Country</p>
+                <a href="https://event-url.com" target="_blank" style="color:var(--gold);font-size:0.85em;text-decoration:none;margin-top:12px;display:inline-block;">Learn more →</a>
+            </div>
+```
+
+---
+
+## 5. Adding an Article/Talk
+
+Find the `Articles & Talks` section. Copy this template:
+
+```html
+            <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:left;">
+                <span style="color:var(--gold);font-size:0.8em;">📝 Article</span>
+                <span style="color:var(--text-muted);font-size:0.75em;margin-left:8px;">Mon DD, YYYY · Author Name</span>
+                <h4 style="color:white;margin:8px 0 6px;font-size:0.95em;">
+                    <a href="https://article-url.com" target="_blank" style="color:white;text-decoration:none;">Article Title</a>
+                </h4>
+                <p style="color:var(--text-muted);font-size:0.8em;line-height:1.5;">Short description of the article.</p>
+            </div>
+```
+
+---
+
+## 6. Translating Content
+
+The site has a translation system. When the user clicks the flag icon, text switches between English and your local language.
+
+### How it works
+
+In `index.html`, find the `var translations = {` object. It contains key-value pairs:
+
+```javascript
+'English text': 'Translated text',
+```
+
+### To add a new translation
+
+Add a new line inside the translations object:
+
+```javascript
+'Text you want to translate': 'Your translation here',
+```
+
+### Important rules
+
+- The English key must match the **exact text** shown on the page
+- Don't change the structure (quotes, commas, colons)
+- Test after every change — a missing comma breaks everything
+
+---
+
+## 7. Managing Lounge Users
+
+### Access the Admin Panel
+
+1. Go to `your-domain.com/members.html`
+2. Log in with your admin email
+3. Click the **⚙️ Admin** button (top right)
+
+### Create a new user
+
+1. Click **Create User**
+2. Enter their email
+3. Click **Create & Send Invite**
+4. They'll receive an email with temporary password
+
+### Delete a user
+
+1. Click **Delete User**
+2. Enter their email
+3. Confirm
+
+### List users
+
+Click **List Users** to see all members in your chapter.
+
+---
+
+## 8. DO NOT TOUCH — Protected Files ⚠️
+
+These files control infrastructure and authentication. **Do not edit them:**
+
+| File | Why |
+|------|-----|
+| `config.js` | Admin authentication settings |
+| `.github/workflows/` | Deployment pipeline |
+| `members.html` | Lounge authentication logic |
+| `admin.html` | Admin panel logic |
+
+**If you accidentally break something:**
+
+1. Don't panic
+2. Go to GitHub → your repo → the file you changed
+3. Click "History" → find the previous version → "Revert"
+4. Or message Ricardo (Founder) for help
+
+---
+
+## 9. Troubleshooting
+
+### Site not updating after commit
+
+- Wait 1-2 minutes (deploy takes time)
+- Hard refresh: `Ctrl + Shift + R`
+- Check GitHub Actions tab for errors
+
+### Deploy failed (red X in Actions)
+
+- Click the failed run → read the error
+- Most common: syntax error in HTML (missing quote or bracket)
+- Fix the error and push again
+
+### Translation not working
+
+- Check for missing commas in the translations object
+- The English key must match **exactly** (including spaces and punctuation)
+- Open browser console (F12) to check for JS errors
+
+### Can't access Admin panel
+
+- Make sure you're logged into the Lounge first
+- Hard refresh (`Ctrl + Shift + R`)
+- If still broken, contact Ricardo
+
+---
+
+## Quick Reference
+
+| Task | How |
+|------|-----|
+| Add member | Edit `index.html` → copy card template → upload photo |
+| Add event | Edit `index.html` → copy event template |
+| Add article | Edit `index.html` → copy article template |
+| Create Lounge user | Admin panel → Create User |
+| Delete Lounge user | Admin panel → Delete User |
+| Translate text | Edit `index.html` → add to translations object |
+| Check deploy | GitHub → Actions tab |
+
+---
+
+## Need Help?
+
+Contact **Ricardo Gulias** (Founder & Global Lead):
+- Email: ricardo.gulias@darede.com.br
+- LinkedIn: /in/yourprofile
+
+---
+
+*Golden Jackets Community · Operations Guide v1.0 · May 2026*
