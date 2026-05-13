@@ -23,14 +23,19 @@ def get_user_groups(email):
 def get_users_in_group(group):
     users = []
     try:
-        resp = cognito.list_users_in_group(UserPoolId=POOL_ID, GroupName=group)
-        for u in resp['Users']:
-            email = next((a['Value'] for a in u['Attributes'] if a['Name'] == 'email'), '')
-            users.append({
-                'email': email,
-                'status': u['UserStatus'],
-                'created': u['UserCreateDate'].isoformat()
-            })
+        params = {'UserPoolId': POOL_ID, 'GroupName': group, 'Limit': 60}
+        while True:
+            resp = cognito.list_users_in_group(**params)
+            for u in resp['Users']:
+                email = next((a['Value'] for a in u['Attributes'] if a['Name'] == 'email'), '')
+                users.append({
+                    'email': email,
+                    'status': u['UserStatus'],
+                    'created': u['UserCreateDate'].isoformat()
+                })
+            if 'NextToken' not in resp:
+                break
+            params['NextToken'] = resp['NextToken']
     except:
         pass
     return users
