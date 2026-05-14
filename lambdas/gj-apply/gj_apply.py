@@ -116,8 +116,6 @@ def lambda_handler(event, context):
 
         # Upload photo
         if photo_b64:
-            put_file(photo_path, '', f'Add photo for {name}', branch, repo=REPO)
-            # Use raw API for binary
             payload = {'message': f'Add photo for {name}', 'content': photo_b64, 'branch': branch}
             gh_api('PUT', f'contents/{photo_path}', payload, repo=REPO)
 
