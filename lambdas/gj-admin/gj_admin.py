@@ -278,6 +278,38 @@ def lambda_handler(event, context):
             ddb.update_item(Key={'id': body.get('id','')}, UpdateExpression='SET active = :f', ExpressionAttributeValues={':f': False})
             return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'message': 'Job removed'})}
 
+        elif action == 'apply-job':
+            job_id = body.get('id', '')
+            applicant_email = get_caller_email(event) or body.get('applicant', '')
+            ddb = boto3.resource('dynamodb', region_name='us-east-1').Table('gj-jobs')
+            resp = ddb.get_item(Key={'id': job_id})
+            job = resp.get('Item', {})
+            if not job:
+                return {'statusCode': 404, 'headers': cors, 'body': json.dumps({'error': 'Job not found'})}
+            poster_email = job.get('posted_by', '')
+            role = job.get('role', '')
+            company = job.get('company', '')
+            sns = boto3.client('sns', region_name='us-east-1')
+            # Notify poster
+            sns.publish(
+                TopicArn='arn:aws:sns:us-east-1:800712212925:goldenjackets-alerts',
+                Subject=f"🤝 Someone is interested in your job: {role} @ {company}",
+                Message=f"Hi {poster_email}!\n\n{applicant_email} is interested in your job posting:\n\nRole: {role}\nCompany: {company}\n\nPlease connect with them directly.\n\n— Golden Jackets Job Board"
+            )
+            # Notify applicant
+            sns.publish(
+                TopicArn='arn:aws:sns:us-east-1:800712212925:goldenjackets-alerts',
+                Subject=f"✅ You applied: {role} @ {company}",
+                Message=f"Hi {applicant_email}!\n\nYou expressed interest in:\n\nRole: {role}\nCompany: {company}\nPosted by: {poster_email}\n\nThe poster has been notified. You can also reach them directly.\n\n— Golden Jackets Job Board"
+            )
+            # Notify founder
+            sns.publish(
+                TopicArn='arn:aws:sns:us-east-1:800712212925:goldenjackets-alerts',
+                Subject=f"💼 Job Match: {applicant_email} → {role} @ {company}",
+                Message=f"Applicant: {applicant_email}\nJob: {role} @ {company}\nPoster: {poster_email}"
+            )
+            return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'message': 'Interest sent! The poster has been notified.'})}
+
         else:
             return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'unknown action'})}
 
