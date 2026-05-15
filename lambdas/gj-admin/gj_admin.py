@@ -65,7 +65,9 @@ def lambda_handler(event, context):
             chapter = caller_groups[0]
 
         # Verify caller has access to requested chapter
-        if not is_global_admin and chapter not in caller_groups:
+        # Skip chapter check for actions that don't need it
+        skip_chapter_actions = ['post-job', 'list-jobs', 'delete-job', 'apply-job', 'submit-article']
+        if not is_global_admin and chapter not in caller_groups and action not in skip_chapter_actions:
             return {'statusCode': 403, 'headers': cors, 'body': json.dumps({'error': 'Access denied to this chapter'})}
 
         if action == 'list-users':
