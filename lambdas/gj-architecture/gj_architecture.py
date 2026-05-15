@@ -51,13 +51,44 @@ def lambda_handler(event, context):
     except:
         pass
 
-    # Lambda functions (grouped)
+    # Lambda functions - critical ones as individual boxes
     try:
         funcs = lambda_client.list_functions()['Functions']
         gj_funcs = [f for f in funcs if 'gj' in f['FunctionName'].lower() or 'golden' in f['FunctionName'].lower()]
-        if gj_funcs:
-            func_names = '\n'.join([f['FunctionName'] for f in gj_funcs])
-            nodes.append({'id': 'lambda', 'x': 740, 'y': 500, 'icon': '⚙️', 'name': 'Lambda', 'detail': f"{len(gj_funcs)} functions\n" + '\n'.join([f['FunctionName'] for f in gj_funcs[:4]]), 'type': 'lambda', 'tooltip': func_names})
+
+        # Check alarms
+        cw = boto3.client('cloudwatch', region_name='us-east-1')
+        alarms_resp = cw.describe_alarms(AlarmNamePrefix='gj-')
+        alarm_states = {a['AlarmName']: a['StateValue'] for a in alarms_resp['MetricAlarms']}
+
+        critical = ['gj-admin', 'gj-apply', 'gj-poland-counter']
+        others = [f for f in gj_funcs if f['FunctionName'] not in critical]
+
+        # Individual critical lambdas
+        positions = [{'name': 'gj-admin', 'x': 640, 'y': 480, 'alarm': 'gj-admin-errors'},
+                     {'name': 'gj-apply', 'x': 820, 'y': 480, 'alarm': 'gj-apply-errors'},
+                     {'name': 'gj-poland-counter', 'x': 640, 'y': 600, 'alarm': 'gj-counter-errors'}]
+
+        for p in positions:
+            func = next((f for f in gj_funcs if f['FunctionName'] == p['name']), None)
+            if func:
+                state = alarm_states.get(p['alarm'], 'OK')
+                status = '🔴 ALARM' if state == 'ALARM' else '🟢 OK'
+                nodes.append({
+                    'id': f"lambda-{p['name']}",
+                    'x': p['x'], 'y': p['y'],
+                    'icon': '⚙️',
+                    'name': f"Lambda {p['name']}",
+                    'detail': f"{func.get('Runtime','N/A')}\n{status}",
+                    'type': 'lambda',
+                    'tooltip': f"Function: {p['name']}\nRuntime: {func.get('Runtime','N/A')}\nMemory: {func.get('MemorySize',128)}MB\nStatus: {status}",
+                    'alarm': state
+                })
+
+        # Others grouped
+        if others:
+            other_names = '\n'.join([f['FunctionName'] for f in others])
+            nodes.append({'id': 'lambda-others', 'x': 820, 'y': 600, 'icon': '⚙️', 'name': 'Lambda (others)', 'detail': f"{len(others)} functions\n" + '\n'.join([f['FunctionName'] for f in others[:3]]), 'type': 'lambda', 'tooltip': other_names})
     except:
         pass
 
@@ -120,33 +151,37 @@ def lambda_handler(event, context):
     if 'github' in node_ids and 's3' in node_ids:
         edges.append({'from': 'github', 'to': 's3', 'color': '#e0e0e0'})
 
-    # User → Cognito → Lambda
+    # User → Cognito → Lambda admin
     if 'cognito' in node_ids:
         edges.append({'from': 'user', 'to': 'cognito', 'color': '#ef4444'})
-        if 'lambda' in node_ids:
-            edges.append({'from': 'cognito', 'to': 'lambda', 'color': '#f90'})
-
-    # User → Lambda
-    if 'lambda' in node_ids:
-        edges.append({'from': 'user', 'to': 'lambda', 'color': '#f90'})
+        if 'lambda-gj-admin' in node_ids:
+            edges.append({'from': 'cognito', 'to': 'lambda-gj-admin', 'color': '#f90'})
 
     # API Gateway edges
     if 'apigateway' in node_ids:
         edges.append({'from': 'user', 'to': 'apigateway', 'color': '#f90'})
-        if 'lambda' in node_ids:
-            edges.append({'from': 'apigateway', 'to': 'lambda', 'color': '#f90'})
+        if 'lambda-gj-admin' in node_ids:
+            edges.append({'from': 'apigateway', 'to': 'lambda-gj-admin', 'color': '#f90'})
+        if 'lambda-gj-apply' in node_ids:
+            edges.append({'from': 'apigateway', 'to': 'lambda-gj-apply', 'color': '#f90'})
+        if 'lambda-gj-poland-counter' in node_ids:
+            edges.append({'from': 'apigateway', 'to': 'lambda-gj-poland-counter', 'color': '#f90'})
 
     # Lambda → GitHub
-    if 'lambda' in node_ids and 'github' in node_ids:
-        edges.append({'from': 'lambda', 'to': 'github', 'color': '#e0e0e0'})
+    if 'lambda-gj-apply' in node_ids and 'github' in node_ids:
+        edges.append({'from': 'lambda-gj-apply', 'to': 'github', 'color': '#e0e0e0'})
+    if 'lambda-gj-admin' in node_ids and 'github' in node_ids:
+        edges.append({'from': 'lambda-gj-admin', 'to': 'github', 'color': '#e0e0e0'})
 
     # Lambda → SNS
-    if 'lambda' in node_ids and 'sns' in node_ids:
-        edges.append({'from': 'lambda', 'to': 'sns', 'color': '#ec4899'})
+    if 'lambda-gj-apply' in node_ids and 'sns' in node_ids:
+        edges.append({'from': 'lambda-gj-apply', 'to': 'sns', 'color': '#ec4899'})
+    if 'lambda-gj-admin' in node_ids and 'sns' in node_ids:
+        edges.append({'from': 'lambda-gj-admin', 'to': 'sns', 'color': '#ec4899'})
 
-    # Lambda → DynamoDB
-    if 'lambda' in node_ids and 'dynamodb' in node_ids:
-        edges.append({'from': 'lambda', 'to': 'dynamodb', 'color': '#3b82f6'})
+    # Lambda counter → DynamoDB
+    if 'lambda-gj-poland-counter' in node_ids and 'dynamodb' in node_ids:
+        edges.append({'from': 'lambda-gj-poland-counter', 'to': 'dynamodb', 'color': '#3b82f6'})
 
     # S3 → Backup
     if 's3' in node_ids and 'backup' in node_ids:
