@@ -124,7 +124,7 @@ def lambda_handler(event, context):
         if index_content:
             card = build_card(name, city, state, date, linkedin, member_type, photo_path)
             if member_type == 'golden' or member_type == '':
-                marker = '<!-- END_GOLDEN -->'
+                marker = '<!-- END_GOLDEN_JACKETS -->'
                 if marker not in index_content:
                     marker = '\U0001f396\ufe0f Alumni'
             else:
