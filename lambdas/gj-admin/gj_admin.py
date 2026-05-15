@@ -199,9 +199,21 @@ def lambda_handler(event, context):
 
             from datetime import datetime
             date_str = datetime.utcnow().strftime('%b %d, %Y')
+
+            # Map email to display name
+            author_name = author.split('@')[0].replace('.', ' ').title()
+            try:
+                user_resp = cognito.admin_get_user(UserPoolId=POOL_ID, Username=author)
+                for attr in user_resp.get('UserAttributes', []):
+                    if attr['Name'] == 'name':
+                        author_name = attr['Value']
+                        break
+            except:
+                pass
+
             article_card = f'''<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:left;">
           <span style="color:var(--gold);font-size:0.8em;">📝 Article</span>
-          <span style="color:var(--text-muted);font-size:0.75em;margin-left:8px;">{date_str} · {author}</span>
+          <span style="color:var(--text-muted);font-size:0.75em;margin-left:8px;">{date_str} · <em>{author_name}</em></span>
           <h4 style="color:white;margin:8px 0 6px;font-size:0.95em;">
             <a href="{url}" target="_blank" style="color:white;text-decoration:none;">{title}</a>
           </h4>
