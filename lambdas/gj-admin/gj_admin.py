@@ -211,14 +211,11 @@ def lambda_handler(event, context):
             except:
                 pass
 
-            article_card = f'''<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:left;">
-          <span style="color:var(--gold);font-size:0.8em;">📝 Article</span>
-          <span style="color:var(--text-muted);font-size:0.75em;margin-left:8px;">{date_str} · <em>{author_name}</em></span>
-          <h4 style="color:white;margin:8px 0 6px;font-size:0.95em;">
-            <a href="{url}" target="_blank" style="color:white;text-decoration:none;">{title}</a>
-          </h4>
-          <p style="color:var(--text-muted);font-size:0.8em;line-height:1.5;">{summary}</p>
-        </div>\n'''
+            article_card = f'''<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:12px;transition:all 0.3s;" onmouseover="this.style.borderColor='rgba(255,215,0,0.4)'" onmouseout="this.style.borderColor='var(--border)'">
+        <p style="color:var(--text-muted);font-size:0.7em;margin-bottom:4px;"><span style="background:rgba(255,215,0,0.15);color:var(--gold);padding:2px 8px;border-radius:4px;font-size:0.9em;font-weight:600;margin-right:6px;">📝 Article</span> {date_str} · <span style="color:var(--gold);font-style:italic;">{author_name}</span></p>
+        <a href="{url}" target="_blank" rel="noopener noreferrer" style="color:var(--gold);font-weight:700;font-size:1em;text-decoration:none;">{title}</a>
+        <p style="color:var(--text-muted);font-size:0.85em;margin-top:6px;">{summary}</p>
+      </div>\n'''
 
             marker = '<!-- END_ARTICLES -->'
             if marker in content:
