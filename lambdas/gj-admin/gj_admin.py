@@ -242,6 +242,35 @@ def lambda_handler(event, context):
 
             return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'message': 'Article submitted! PR created for review.'})}
 
+        elif action == 'post-job':
+            import uuid
+            from datetime import datetime
+            ddb = boto3.resource('dynamodb', region_name='us-east-1').Table('gj-jobs')
+            item = {
+                'id': str(uuid.uuid4())[:8],
+                'company': body.get('company', ''),
+                'role': body.get('role', ''),
+                'location': body.get('location', ''),
+                'link': body.get('link', ''),
+                'contact': body.get('contact', ''),
+                'posted_by': get_caller_email(event) or body.get('posted_by', ''),
+                'created': datetime.utcnow().isoformat(),
+                'active': True
+            }
+            ddb.put_item(Item=item)
+            return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'message': 'Job posted!', 'id': item['id']})}
+
+        elif action == 'list-jobs':
+            ddb = boto3.resource('dynamodb', region_name='us-east-1').Table('gj-jobs')
+            resp = ddb.scan(FilterExpression=boto3.dynamodb.conditions.Attr('active').eq(True))
+            jobs = sorted(resp.get('Items', []), key=lambda x: x.get('created',''), reverse=True)
+            return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'jobs': jobs})}
+
+        elif action == 'delete-job':
+            ddb = boto3.resource('dynamodb', region_name='us-east-1').Table('gj-jobs')
+            ddb.update_item(Key={'id': body.get('id','')}, UpdateExpression='SET active = :f', ExpressionAttributeValues={':f': False})
+            return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'message': 'Job removed'})}
+
         else:
             return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'unknown action'})}
 
