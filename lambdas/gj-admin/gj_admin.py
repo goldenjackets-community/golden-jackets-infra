@@ -155,6 +155,19 @@ def lambda_handler(event, context):
             )
             return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'message': 'Restore started from latest backup'})}
 
+        elif action == 'submit-article':
+            title = body.get('title', '')
+            url = body.get('url', '')
+            summary = body.get('summary', '')
+            author = body.get('author', 'unknown')
+            sns = boto3.client('sns', region_name='us-east-1')
+            sns.publish(
+                TopicArn='arn:aws:sns:us-east-1:800712212925:goldenjackets-alerts',
+                Subject=f'📝 New Article Submission: {title}',
+                Message=f'Author: {author}\nTitle: {title}\nURL: {url}\nSummary: {summary}'
+            )
+            return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'message': 'Article submitted for review'})}
+
         else:
             return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'unknown action'})}
 
