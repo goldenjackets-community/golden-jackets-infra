@@ -23,14 +23,9 @@ def lambda_handler(event, context):
     # User node (static)
     nodes.append({'id': 'user', 'x': 80, 'y': 300, 'icon': '👤', 'name': 'User / Browser', 'detail': 'goldenjacketsbrazil.com\ngoldenjackets.pl', 'type': 'user', 'tooltip': 'End users accessing the community websites.'})
 
-    # Route 53
-    try:
-        zones = route53.list_hosted_zones()['HostedZones']
-        gj_zones = [z for z in zones if 'goldenjacket' in z['Name'].lower()]
-        nodes.append({'id': 'route53', 'x': 300, 'y': 300, 'icon': '🌐', 'name': 'Route 53', 'detail': f'DNS\n{len(gj_zones)} Hosted Zones', 'type': 'route53', 'tooltip': '\n'.join([z['Name'] for z in gj_zones])})
-        edges.append({'from': 'user', 'to': 'route53', 'color': '#FFD700'})
-    except:
-        pass
+    # Route 53 (zones are in account 958919067803, adding static)
+    nodes.append({'id': 'route53', 'x': 300, 'y': 300, 'icon': '🌐', 'name': 'Route 53', 'detail': 'DNS\n3 Hosted Zones', 'type': 'route53', 'tooltip': 'goldenjacketsbrazil.com\ngoldenjackets.pl\ngoldenjacketacademy.com'})
+    edges.append({'from': 'user', 'to': 'route53', 'color': '#FFD700'})
 
     # CloudFront
     try:
