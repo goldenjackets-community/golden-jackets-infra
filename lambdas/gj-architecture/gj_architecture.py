@@ -24,7 +24,7 @@ def lambda_handler(event, context):
     nodes.append({'id': 'user', 'x': 80, 'y': 300, 'icon': '👤', 'name': 'User / Browser', 'detail': 'goldenjacketsbrazil.com\ngoldenjackets.pl', 'type': 'user', 'tooltip': 'End users accessing the community websites.'})
 
     # Route 53 (zones are in account 958919067803, adding static)
-    nodes.append({'id': 'route53', 'x': 300, 'y': 300, 'icon': '🌐', 'name': 'Route 53', 'detail': 'DNS\n3 Hosted Zones', 'type': 'route53', 'tooltip': 'goldenjacketsbrazil.com\ngoldenjackets.pl\ngoldenjacketacademy.com'})
+    nodes.append({'id': 'route53', 'x': 300, 'y': 300, 'icon': '🌐', 'name': 'Route 53', 'detail': '3 Hosted Zones\ngoldenjacketsbrazil.com\ngoldenjackets.pl\ngoldenjacketacademy.com', 'type': 'route53', 'tooltip': 'goldenjacketsbrazil.com (Z01877031V3TFGYA6MIEA)\ngoldenjackets.pl (Z07410873K29FYP3PO6JN)\ngoldenjacketacademy.com (Z08216573HRJWUYJE7121)'})
     edges.append({'from': 'user', 'to': 'route53', 'color': '#FFD700'})
 
     # CloudFront
@@ -152,8 +152,18 @@ def lambda_handler(event, context):
     if 's3' in node_ids and 'backup' in node_ids:
         edges.append({'from': 's3', 'to': 'backup', 'color': '#14b8a6'})
 
+    # AWS Health - check for active events
+    health_issues = []
+    try:
+        health = boto3.client('health', region_name='us-east-1')
+        events = health.describe_events(filter={'eventStatusCodes': ['open', 'upcoming']})['events']
+        for ev in events:
+            health_issues.append({'service': ev.get('service',''), 'description': ev.get('eventTypeCode',''), 'status': ev.get('statusCode','')})
+    except:
+        pass
+
     # Save to S3
-    data = {'nodes': nodes, 'edges': edges, 'updated': context.function_name if context else 'local'}
+    data = {'nodes': nodes, 'edges': edges, 'health': health_issues, 'updated': context.function_name if context else 'local'}
     s3.put_object(
         Bucket=BUCKET,
         Key=OUTPUT_KEY,
