@@ -46,28 +46,23 @@ def lambda_handler(event, context):
     except:
         pass
 
-    # S3 buckets
+    # S3 buckets (grouped)
     try:
         buckets = s3.list_buckets()['Buckets']
         gj_buckets = [b for b in buckets if 'goldenjacket' in b['Name'].lower()]
-        y_pos = 180
-        for b in gj_buckets[:6]:
-            node_id = f"s3-{b['Name'].replace('.','_')[:20]}"
-            nodes.append({'id': node_id, 'x': 740, 'y': y_pos, 'icon': '📦', 'name': 'S3', 'detail': b['Name'], 'type': 's3', 'tooltip': f"Bucket: {b['Name']}\nCreated: {b['CreationDate'].strftime('%Y-%m-%d')}"})
-            y_pos += 100
+        if gj_buckets:
+            bucket_names = '\n'.join([b['Name'] for b in gj_buckets])
+            nodes.append({'id': 's3', 'x': 740, 'y': 280, 'icon': '📦', 'name': 'S3', 'detail': f"{len(gj_buckets)} buckets\n" + '\n'.join([b['Name'] for b in gj_buckets[:4]]), 'type': 's3', 'tooltip': bucket_names})
     except:
         pass
 
-    # Lambda functions
+    # Lambda functions (grouped)
     try:
         funcs = lambda_client.list_functions()['Functions']
         gj_funcs = [f for f in funcs if 'gj' in f['FunctionName'].lower() or 'golden' in f['FunctionName'].lower()]
-        y_pos = 450
-        for f in gj_funcs:
-            node_id = f"lambda-{f['FunctionName'].replace('-','_')}"
-            runtime = f.get('Runtime', 'N/A')
-            nodes.append({'id': node_id, 'x': 520, 'y': y_pos, 'icon': '⚙️', 'name': 'Lambda', 'detail': f"{f['FunctionName']}\n{runtime}", 'type': 'lambda', 'tooltip': f"Function: {f['FunctionName']}\nRuntime: {runtime}\nMemory: {f.get('MemorySize', 'N/A')}MB\nTimeout: {f.get('Timeout', 'N/A')}s"})
-            y_pos += 90
+        if gj_funcs:
+            func_names = '\n'.join([f['FunctionName'] for f in gj_funcs])
+            nodes.append({'id': 'lambda', 'x': 520, 'y': 500, 'icon': '⚙️', 'name': 'Lambda', 'detail': f"{len(gj_funcs)} functions\n" + '\n'.join([f['FunctionName'] for f in gj_funcs[:4]]), 'type': 'lambda', 'tooltip': func_names})
     except:
         pass
 
@@ -112,50 +107,46 @@ def lambda_handler(event, context):
 
     # Auto-generate edges
     node_ids = [n['id'] for n in nodes]
-    lambda_ids = [n['id'] for n in nodes if n['type'] == 'lambda']
-    s3_ids = [n['id'] for n in nodes if n['type'] == 's3']
     cf_ids = [n['id'] for n in nodes if n['type'] == 'cloudfront']
 
     # Route53 → CloudFront
     for cf in cf_ids:
         edges.append({'from': 'route53', 'to': cf, 'color': '#8b5cf6'})
 
-    # CloudFront → S3 (pair them)
-    for i, cf in enumerate(cf_ids):
-        if i < len(s3_ids):
-            edges.append({'from': cf, 'to': s3_ids[i], 'color': '#3ecf8e'})
+    # CloudFront → S3
+    if 's3' in node_ids:
+        for cf in cf_ids:
+            edges.append({'from': cf, 'to': 's3', 'color': '#3ecf8e'})
 
     # GitHub → S3
-    if 'github' in node_ids:
-        for sid in s3_ids[:2]:
-            edges.append({'from': 'github', 'to': sid, 'color': '#e0e0e0'})
+    if 'github' in node_ids and 's3' in node_ids:
+        edges.append({'from': 'github', 'to': 's3', 'color': '#e0e0e0'})
 
-    # User → Cognito
+    # User → Cognito → Lambda
     if 'cognito' in node_ids:
         edges.append({'from': 'user', 'to': 'cognito', 'color': '#ef4444'})
-        for lid in lambda_ids:
-            if 'admin' in lid:
-                edges.append({'from': 'cognito', 'to': lid, 'color': '#f90'})
+        if 'lambda' in node_ids:
+            edges.append({'from': 'cognito', 'to': 'lambda', 'color': '#f90'})
 
-    # Lambdas → GitHub, SNS
-    for lid in lambda_ids:
-        if 'apply' in lid or 'admin' in lid:
-            if 'github' in node_ids:
-                edges.append({'from': lid, 'to': 'github', 'color': '#e0e0e0'})
-            if 'sns' in node_ids:
-                edges.append({'from': lid, 'to': 'sns', 'color': '#ec4899'})
-        if 'counter' in lid and 'dynamodb' in node_ids:
-            edges.append({'from': lid, 'to': 'dynamodb', 'color': '#3b82f6'})
+    # User → Lambda
+    if 'lambda' in node_ids:
+        edges.append({'from': 'user', 'to': 'lambda', 'color': '#f90'})
 
-    # User → Lambda apply/counter
-    for lid in lambda_ids:
-        if 'apply' in lid or 'counter' in lid:
-            edges.append({'from': 'user', 'to': lid, 'color': '#f90'})
+    # Lambda → GitHub
+    if 'lambda' in node_ids and 'github' in node_ids:
+        edges.append({'from': 'lambda', 'to': 'github', 'color': '#e0e0e0'})
+
+    # Lambda → SNS
+    if 'lambda' in node_ids and 'sns' in node_ids:
+        edges.append({'from': 'lambda', 'to': 'sns', 'color': '#ec4899'})
+
+    # Lambda → DynamoDB
+    if 'lambda' in node_ids and 'dynamodb' in node_ids:
+        edges.append({'from': 'lambda', 'to': 'dynamodb', 'color': '#3b82f6'})
 
     # S3 → Backup
-    if 'backup' in node_ids:
-        for sid in s3_ids[:2]:
-            edges.append({'from': sid, 'to': 'backup', 'color': '#14b8a6'})
+    if 's3' in node_ids and 'backup' in node_ids:
+        edges.append({'from': 's3', 'to': 'backup', 'color': '#14b8a6'})
 
     # Save to S3
     data = {'nodes': nodes, 'edges': edges, 'updated': context.function_name if context else 'local'}
