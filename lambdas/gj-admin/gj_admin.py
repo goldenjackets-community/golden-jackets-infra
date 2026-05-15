@@ -258,6 +258,13 @@ def lambda_handler(event, context):
                 'active': True
             }
             ddb.put_item(Item=item)
+            # Notify founder
+            sns = boto3.client('sns', region_name='us-east-1')
+            sns.publish(
+                TopicArn='arn:aws:sns:us-east-1:800712212925:goldenjackets-alerts',
+                Subject=f"💼 New Job Posted: {item['role']} @ {item['company']}",
+                Message=f"Role: {item['role']}\nCompany: {item['company']}\nLocation: {item['location']}\nLink: {item['link']}\nContact: {item['contact']}\nPosted by: {item['posted_by']}"
+            )
             return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'message': 'Job posted!', 'id': item['id']})}
 
         elif action == 'list-jobs':
