@@ -62,7 +62,7 @@ def lambda_handler(event, context):
         gj_funcs = [f for f in funcs if 'gj' in f['FunctionName'].lower() or 'golden' in f['FunctionName'].lower()]
         if gj_funcs:
             func_names = '\n'.join([f['FunctionName'] for f in gj_funcs])
-            nodes.append({'id': 'lambda', 'x': 520, 'y': 500, 'icon': '⚙️', 'name': 'Lambda', 'detail': f"{len(gj_funcs)} functions\n" + '\n'.join([f['FunctionName'] for f in gj_funcs[:4]]), 'type': 'lambda', 'tooltip': func_names})
+            nodes.append({'id': 'lambda', 'x': 740, 'y': 500, 'icon': '⚙️', 'name': 'Lambda', 'detail': f"{len(gj_funcs)} functions\n" + '\n'.join([f['FunctionName'] for f in gj_funcs[:4]]), 'type': 'lambda', 'tooltip': func_names})
     except:
         pass
 
@@ -105,6 +105,9 @@ def lambda_handler(event, context):
     # GitHub (static - can't query without token in this context)
     nodes.append({'id': 'github', 'x': 960, 'y': 100, 'icon': '🐙', 'name': 'GitHub', 'detail': 'goldenjackets-community\n4 repos', 'type': 'github', 'tooltip': 'Org: goldenjackets-community\nRepos: brazil, poland, academy, infra'})
 
+    # API Gateway (static - known IDs)
+    nodes.append({'id': 'apigateway', 'x': 520, 'y': 380, 'icon': '🔌', 'name': 'API Gateway', 'detail': '3 APIs\ngj-admin-api\ngj-apply-api\ngj-counter-api', 'type': 'lambda', 'tooltip': 'gj-admin-api (pr8xdjp341)\ngj-apply-api (kqiq2bltjd)\ngj-counter-api (97i05orlfa)'})
+
     # Auto-generate edges
     node_ids = [n['id'] for n in nodes]
     cf_ids = [n['id'] for n in nodes if n['type'] == 'cloudfront']
@@ -131,6 +134,12 @@ def lambda_handler(event, context):
     # User → Lambda
     if 'lambda' in node_ids:
         edges.append({'from': 'user', 'to': 'lambda', 'color': '#f90'})
+
+    # API Gateway edges
+    if 'apigateway' in node_ids:
+        edges.append({'from': 'user', 'to': 'apigateway', 'color': '#f90'})
+        if 'lambda' in node_ids:
+            edges.append({'from': 'apigateway', 'to': 'lambda', 'color': '#f90'})
 
     # Lambda → GitHub
     if 'lambda' in node_ids and 'github' in node_ids:
