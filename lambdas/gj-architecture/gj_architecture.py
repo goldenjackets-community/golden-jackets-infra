@@ -24,7 +24,7 @@ def lambda_handler(event, context):
     nodes.append({'id': 'user', 'x': 80, 'y': 300, 'icon': '👤', 'name': 'User / Browser', 'detail': 'goldenjacketsbrazil.com\ngoldenjackets.pl', 'type': 'user', 'tooltip': 'End users accessing the community websites.'})
 
     # Route 53 (zones are in account 958919067803, adding static)
-    nodes.append({'id': 'route53', 'x': 300, 'y': 300, 'icon': '🌐', 'name': 'Route 53', 'detail': '3 Hosted Zones\ngoldenjacketsbrazil.com\ngoldenjackets.pl\ngoldenjacketacademy.com', 'type': 'route53', 'tooltip': 'goldenjacketsbrazil.com (Z01877031V3TFGYA6MIEA)\ngoldenjackets.pl (Z07410873K29FYP3PO6JN)\ngoldenjacketacademy.com (Z08216573HRJWUYJE7121)'})
+    nodes.append({'id': 'route53', 'x': 300, 'y': 300, 'icon': '🌐', 'name': 'Route 53', 'detail': '2 Hosted Zones\ngoldenjacketsbrazil.com\ngoldenjackets.pl', 'type': 'route53', 'tooltip': 'goldenjacketsbrazil.com (Z01877031V3TFGYA6MIEA)\ngoldenjackets.pl (Z07410873K29FYP3PO6JN)'})
     edges.append({'from': 'user', 'to': 'route53', 'color': '#FFD700'})
 
     # CloudFront
@@ -64,10 +64,10 @@ def lambda_handler(event, context):
         critical = ['gj-admin', 'gj-apply', 'gj-poland-counter']
         others = [f for f in gj_funcs if f['FunctionName'] not in critical]
 
-        # Individual critical lambdas
-        positions = [{'name': 'gj-admin', 'x': 640, 'y': 480, 'alarm': 'gj-admin-errors'},
-                     {'name': 'gj-apply', 'x': 820, 'y': 480, 'alarm': 'gj-apply-errors'},
-                     {'name': 'gj-poland-counter', 'x': 640, 'y': 600, 'alarm': 'gj-counter-errors'}]
+        # Individual critical lambdas - spaced out
+        positions = [{'name': 'gj-admin', 'x': 580, 'y': 500, 'alarm': 'gj-admin-errors'},
+                     {'name': 'gj-apply', 'x': 820, 'y': 500, 'alarm': 'gj-apply-errors'},
+                     {'name': 'gj-poland-counter', 'x': 1060, 'y': 500, 'alarm': 'gj-counter-errors'}]
 
         for p in positions:
             func = next((f for f in gj_funcs if f['FunctionName'] == p['name']), None)
@@ -85,10 +85,7 @@ def lambda_handler(event, context):
                     'alarm': state
                 })
 
-        # Others grouped
-        if others:
-            other_names = '\n'.join([f['FunctionName'] for f in others])
-            nodes.append({'id': 'lambda-others', 'x': 820, 'y': 600, 'icon': '⚙️', 'name': 'Lambda (others)', 'detail': f"{len(others)} functions\n" + '\n'.join([f['FunctionName'] for f in others[:3]]), 'type': 'lambda', 'tooltip': other_names})
+        # No "others" box - only critical lambdas shown
     except:
         pass
 
