@@ -130,7 +130,7 @@ def lambda_handler(event, context):
             return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'resent': resent, 'count': len(resent)})}
 
         elif action == 'backup-status':
-            vault = 'gj-poland-backups' if chapter == 'poland' else 'gj-site-backups'
+            vault = {'poland': 'gj-poland-backups', 'uk': 'gj-uk-backups'}.get(chapter, 'gj-site-backups')
             jobs = backup.list_backup_jobs(MaxResults=10, ByBackupVaultName=vault)
             result = []
             for j in jobs.get('BackupJobs', []):
@@ -144,7 +144,7 @@ def lambda_handler(event, context):
         elif action == 'restore-backup':
             if not is_global_admin:
                 return {'statusCode': 403, 'headers': cors, 'body': json.dumps({'error': 'Only global admins can restore backups'})}
-            vault = 'gj-poland-backups' if chapter == 'poland' else 'gj-site-backups'
+            vault = {'poland': 'gj-poland-backups', 'uk': 'gj-uk-backups'}.get(chapter, 'gj-site-backups')
             bucket = 'goldenjackets.pl' if chapter == 'poland' else 'www.goldenjacketsbrazil.com'
             jobs = backup.list_backup_jobs(MaxResults=1, ByBackupVaultName=vault, ByState='COMPLETED')
             if not jobs.get('BackupJobs'):
@@ -271,9 +271,10 @@ def lambda_handler(event, context):
 
         elif action == 'list-jobs':
             ddb = boto3.resource('dynamodb', region_name='us-east-1').Table('gj-jobs')
-            resp = ddb.scan(FilterExpression=boto3.dynamodb.conditions.Attr('active').eq(True))
+            from boto3.dynamodb.conditions import Attr
+            resp = ddb.scan(FilterExpression=Attr('active').eq(True))
             jobs = sorted(resp.get('Items', []), key=lambda x: x.get('created',''), reverse=True)
-            return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'jobs': jobs})}
+            return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'jobs': jobs}, default=str)}
 
         elif action == 'delete-job':
             ddb = boto3.resource('dynamodb', region_name='us-east-1').Table('gj-jobs')
