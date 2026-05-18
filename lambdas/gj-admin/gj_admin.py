@@ -316,5 +316,61 @@ def lambda_handler(event, context):
         else:
             return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'unknown action'})}
 
+
+        elif action == 'list-prs':
+            prs = list_prs(chapter)
+            return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'prs': prs})}
+
+        elif action == 'merge-pr':
+            pr_number = body.get('pr_number')
+            if not pr_number:
+                return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'pr_number required'})}
+            result = merge_pr(chapter, pr_number)
+            if 'error' in result:
+                return {'statusCode': 400, 'headers': cors, 'body': json.dumps(result)}
+            return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'message': f'PR #{pr_number} merged successfully'})}
     except Exception as e:
         return {'statusCode': 500, 'headers': cors, 'body': json.dumps({'error': str(e)})}
+
+# --- PR Management (Pending Applications & Articles) ---
+import urllib.request
+import os
+
+def github_api(method, path, body=None):
+    token = os.environ.get('GITHUB_TOKEN', '')
+    url = f'https://api.github.com{path}'
+    headers = {'Authorization': f'token {token}', 'Accept': 'application/vnd.github.v3+json', 'User-Agent': 'gj-admin'}
+    data = json.dumps(body).encode() if body else None
+    req = urllib.request.Request(url, data=data, headers=headers, method=method)
+    try:
+        resp = urllib.request.urlopen(req)
+        return json.loads(resp.read().decode())
+    except Exception as e:
+        return {'error': str(e)}
+
+def list_prs(chapter):
+    repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk'}
+    repo = repo_map.get(chapter, '')
+    if not repo:
+        return []
+    result = github_api('GET', f'/repos/goldenjackets-community/{repo}/pulls?state=open')
+    if isinstance(result, list):
+        prs = []
+        for pr in result:
+            prs.append({
+                'number': pr['number'],
+                'title': pr['title'],
+                'author': pr['user']['login'],
+                'created_at': pr['created_at'],
+                'type': 'member' if 'New Member' in pr['title'] or 'Add member' in pr['title'] else 'article'
+            })
+        return prs
+    return []
+
+def merge_pr(chapter, pr_number):
+    repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk'}
+    repo = repo_map.get(chapter, '')
+    if not repo:
+        return {'error': 'Invalid chapter'}
+    result = github_api('PUT', f'/repos/goldenjackets-community/{repo}/pulls/{pr_number}/merge', {'merge_method': 'squash'})
+    return result
