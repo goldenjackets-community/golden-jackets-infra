@@ -297,7 +297,7 @@ These files control infrastructure and authentication. **Do not edit them:**
 ## Need Help?
 
 Contact **Ricardo Gulias** (Founder & Global Lead):
-- Email: ricardo.gulias@darede.com.br
+- Email: ricardo.gulias@goldenjacketsbrazil.com
 - LinkedIn: /in/yourprofile
 
 ---

@@ -7,7 +7,7 @@ backup = boto3.client('backup', region_name='us-east-1')
 POOL_ID = 'us-east-1_Z0VzzrmIX'
 
 # Global admins can see all chapters
-GLOBAL_ADMINS = ['ricardo.gulias@darede.com.br']
+GLOBAL_ADMINS = ['ricardo.gulias@goldenjacketsbrazil.com']
 
 def get_caller_email(event):
     claims = event.get('requestContext', {}).get('authorizer', {}).get('jwt', {}).get('claims', {})
