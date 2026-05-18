@@ -1,6 +1,8 @@
 import traceback
 import json
 import boto3
+import urllib.request
+import os
 
 cognito = boto3.client('cognito-idp', region_name='us-east-1')
 backup = boto3.client('backup', region_name='us-east-1')
@@ -39,6 +41,38 @@ def get_users_in_group(group):
     except:
         pass
     return users
+
+
+# --- PR Management ---
+
+def github_api(method, path, body=None):
+    token = os.environ.get('GITHUB_TOKEN', '')
+    url = f'https://api.github.com{path}'
+    headers = {'Authorization': f'token {token}', 'Accept': 'application/vnd.github.v3+json', 'User-Agent': 'gj-admin'}
+    data = json.dumps(body).encode() if body else None
+    req = urllib.request.Request(url, data=data, headers=headers, method=method)
+    try:
+        resp = urllib.request.urlopen(req)
+        return json.loads(resp.read().decode())
+    except Exception as e:
+        return {'error': str(e)}
+
+def list_prs(chapter):
+    repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk'}
+    repo = repo_map.get(chapter, '')
+    if not repo:
+        return []
+    result = github_api('GET', f'/repos/goldenjackets-community/{repo}/pulls?state=open')
+    if isinstance(result, list):
+        return [{'number': pr['number'], 'title': pr['title'], 'author': pr['user']['login'], 'created_at': pr['created_at'], 'type': 'member' if 'New Member' in pr['title'] or 'Add member' in pr['title'] else 'article'} for pr in result]
+    return []
+
+def merge_pr(chapter, pr_number):
+    repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk'}
+    repo = repo_map.get(chapter, '')
+    if not repo:
+        return {'error': 'Invalid chapter'}
+    return github_api('PUT', f'/repos/goldenjackets-community/{repo}/pulls/{pr_number}/merge', {'merge_method': 'squash'})
 
 def lambda_handler(event, context):
     cors = {
@@ -313,9 +347,6 @@ def lambda_handler(event, context):
             )
             return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'message': 'Interest sent! The poster has been notified.'})}
 
-        else:
-            return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'unknown action'})}
-
 
         elif action == 'list-prs':
             prs = list_prs(chapter)
@@ -329,6 +360,11 @@ def lambda_handler(event, context):
             if 'error' in result:
                 return {'statusCode': 400, 'headers': cors, 'body': json.dumps(result)}
             return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'message': f'PR #{pr_number} merged successfully'})}
+
+        else:
+            return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'unknown action'})}
+
+
     except Exception as e:
         return {'statusCode': 500, 'headers': cors, 'body': json.dumps({'error': str(e)})}
 
