@@ -420,12 +420,35 @@ def move_member_card(chapter, member_name, target):
         sha = file_data['sha']
     except Exception as e:
         return {'error': f'Failed to read index.html: {str(e)}'}
-    pattern = r'(<div class="member-card[^"]*"[^>]*>.*?<h3>' + re.escape(member_name) + r'</h3>.*?</div>\s*</div>)'
+    pattern = r'(<div class="member-card[^"]*"[^>]*>\s*<img[^>]*>\s*<h3>' + re.escape(member_name) + r'</h3>.*?</div>\s*</div>\s*</div>)'
     match = re.search(pattern, content, re.DOTALL)
     if not match:
-        return {'error': f'Member "{member_name}" not found on the site'}
-    card = match.group(1)
-    content = content.replace(card, '')
+        # Try simpler pattern
+        lines = content.split('\n')
+        start = end = -1
+        for i, line in enumerate(lines):
+            if f'<h3>{member_name}</h3>' in line:
+                # Find the opening div above
+                for j in range(i-1, max(i-5, -1), -1):
+                    if 'member-card' in lines[j]:
+                        start = j
+                        break
+                # Find closing divs below
+                div_count = 0
+                for j in range(start, min(start+20, len(lines))):
+                    div_count += lines[j].count('<div') - lines[j].count('</div')
+                    if div_count <= 0:
+                        end = j
+                        break
+                break
+        if start >= 0 and end >= 0:
+            card = '\n'.join(lines[start:end+1])
+            content = '\n'.join(lines[:start] + lines[end+1:])
+        else:
+            return {'error': f'Member "{member_name}" not found on the site'}
+    else:
+        card = match.group(1)
+        content = content.replace(card, '')
     if target == 'golden':
         card = re.sub(r'class="member-card[^"]*"', 'class="member-card"', card)
         card = re.sub(r'<span class="tag">Challenger</span>', '<span class="tag">Golden Jacket</span>\n          <span class="tag">Member</span>', card)
