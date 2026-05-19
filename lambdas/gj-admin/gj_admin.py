@@ -361,6 +361,18 @@ def lambda_handler(event, context):
                 return {'statusCode': 400, 'headers': cors, 'body': json.dumps(result)}
             return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'message': f'PR #{pr_number} merged successfully'})}
 
+        elif action == 'move-member':
+            member_name = body.get('name', '')
+            target = body.get('target', '')
+            if not member_name or not target:
+                return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'name and target required'})}
+            if target not in ('golden', 'alumni', 'challenger'):
+                return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'target must be golden, alumni or challenger'})}
+            result = move_member_card(chapter, member_name, target)
+            if 'error' in result:
+                return {'statusCode': 400, 'headers': cors, 'body': json.dumps(result)}
+            return {'statusCode': 200, 'headers': cors, 'body': json.dumps(result)}
+
         else:
             return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'unknown action'})}
 
@@ -383,6 +395,69 @@ def github_api(method, path, body=None):
         return json.loads(resp.read().decode())
     except Exception as e:
         return {'error': str(e)}
+
+def move_member_card(chapter, member_name, target):
+    import re, base64
+    repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk'}
+    repo = repo_map.get(chapter, '')
+    if not repo:
+        return {'error': 'Invalid chapter'}
+    token = os.environ.get('GITHUB_TOKEN', '')
+    org = 'goldenjackets-community'
+    try:
+        branch = 'main'
+        url = f'https://api.github.com/repos/{org}/{repo}/contents/index.html?ref={branch}'
+        req = urllib.request.Request(url, headers={'Authorization': f'token {token}', 'Accept': 'application/vnd.github.v3+json', 'User-Agent': 'gj-admin'})
+        try:
+            resp = urllib.request.urlopen(req)
+        except:
+            branch = 'master'
+            url = f'https://api.github.com/repos/{org}/{repo}/contents/index.html?ref={branch}'
+            req = urllib.request.Request(url, headers={'Authorization': f'token {token}', 'Accept': 'application/vnd.github.v3+json', 'User-Agent': 'gj-admin'})
+            resp = urllib.request.urlopen(req)
+        file_data = json.loads(resp.read().decode())
+        content = base64.b64decode(file_data['content']).decode()
+        sha = file_data['sha']
+    except Exception as e:
+        return {'error': f'Failed to read index.html: {str(e)}'}
+    pattern = r'(<div class="member-card[^"]*"[^>]*>.*?<h3>' + re.escape(member_name) + r'</h3>.*?</div>\s*</div>)'
+    match = re.search(pattern, content, re.DOTALL)
+    if not match:
+        return {'error': f'Member "{member_name}" not found on the site'}
+    card = match.group(1)
+    content = content.replace(card, '')
+    if target == 'golden':
+        card = re.sub(r'class="member-card[^"]*"', 'class="member-card"', card)
+        card = re.sub(r'<span class="tag">Challenger</span>', '<span class="tag">Golden Jacket</span>\n          <span class="tag">Member</span>', card)
+        card = re.sub(r'<span class="tag">Alumni</span>', '<span class="tag">Golden Jacket</span>\n          <span class="tag">Member</span>', card)
+        card = re.sub(r'<span class="tag">[\d/]+ Certifications</span>\s*', '', card)
+        marker = '<!-- END_GOLDEN_JACKETS -->'
+    elif target == 'alumni':
+        card = re.sub(r'class="member-card[^"]*"', 'class="member-card alumni"', card)
+        card = re.sub(r'<span class="tag">Golden Jacket</span>', '<span class="tag">Alumni</span>', card)
+        card = re.sub(r'<span class="tag">Challenger</span>', '<span class="tag">Alumni</span>', card)
+        card = re.sub(r'<span class="tag">[\d/]+ Certifications</span>\s*', '', card)
+        card = re.sub(r'<span class="tag">Member</span>', '', card)
+        marker = '<!-- END_ALUMNI -->'
+    else:
+        card = re.sub(r'class="member-card[^"]*"', 'class="member-card challenger"', card)
+        card = re.sub(r'<span class="tag">Golden Jacket</span>', '<span class="tag">Challenger</span>', card)
+        card = re.sub(r'<span class="tag">Alumni</span>', '<span class="tag">Challenger</span>', card)
+        card = re.sub(r'<span class="tag">Member</span>', '', card)
+        marker = '<!-- END_CHALLENGERS -->'
+    if marker not in content:
+        return {'error': f'Marker {marker} not found in index.html'}
+    content = content.replace(marker, card + '\n' + marker)
+    labels = {'golden': 'Golden Jacket', 'alumni': 'Alumni', 'challenger': 'Challenger'}
+    msg = f'Move {member_name} to {labels[target]}'
+    payload = {'message': msg, 'content': base64.b64encode(content.encode()).decode(), 'sha': sha, 'branch': branch}
+    url = f'https://api.github.com/repos/{org}/{repo}/contents/index.html'
+    req = urllib.request.Request(url, data=json.dumps(payload).encode(), headers={'Authorization': f'token {token}', 'Accept': 'application/vnd.github.v3+json', 'User-Agent': 'gj-admin'}, method='PUT')
+    try:
+        urllib.request.urlopen(req)
+        return {'message': f'{member_name} moved to {labels[target]}. Site will update in ~1 minute.'}
+    except Exception as e:
+        return {'error': f'Failed to update: {str(e)}'}
 
 def list_prs(chapter):
     repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk'}
