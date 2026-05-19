@@ -95,6 +95,12 @@ def lambda_handler(event, context):
         name = body['name']
         city = body['city']
         state = body['state']
+
+        # Auto-append country to city based on region
+        country_map = {'SC': 'Scotland', 'SCT': 'Scotland', 'WA': 'Wales', 'WAL': 'Wales', 'NI': 'Northern Ireland', 'NIR': 'Northern Ireland'}
+        nation = country_map.get(state, 'England')
+        if 'United Kingdom' not in city:
+            city = f'{city}, {nation}, United Kingdom'
         date = body.get('date', '')
         linkedin = body['linkedin']
         email = body.get('email', '')
