@@ -409,13 +409,30 @@ def lambda_handler(event, context):
             repo = repo_map.get(chapter, '')
             if not repo:
                 return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'Invalid chapter'})}
-            safe_name = name.lower().replace(' ', '-')
-            ext = filename.rsplit('.', 1)[-1] if '.' in filename else 'jpg'
-            photo_path = f'assets/members/{safe_name}.{ext}'
             org = 'goldenjackets-community'
-            # Check if file exists (get sha)
+            # Find actual photo path from index.html
+            import base64 as b64, re
+            index_data = github_api('GET', f'/repos/{org}/{repo}/contents/index.html')
+            index_content = b64.b64decode(index_data.get('content', '')).decode()
+            # Search for img src near the member name
+            pattern = r'<img\s+src="(assets/members/[^"]+)"[^>]*alt="[^"]*' + re.escape(name.split()[0])
+            match = re.search(pattern, index_content, re.IGNORECASE)
+            if not match:
+                # Try simpler: find any img src near the name
+                idx = index_content.lower().find(name.lower())
+                if idx == -1:
+                    idx = index_content.lower().find(name.split()[0].lower())
+                if idx > -1:
+                    chunk = index_content[max(0,idx-500):idx+100]
+                    m2 = re.search(r'src="(assets/members/[^"]+)"', chunk)
+                    if m2:
+                        match = m2
+                if not match:
+                    return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': f'Member "{name}" not found on site'})}
+            photo_path = match.group(1)
+            # Get existing file sha
             existing = github_api('GET', f'/repos/{org}/{repo}/contents/{photo_path}')
-            sha = existing.get('sha') if 'sha' in existing else None
+            sha = existing.get('sha')
             payload = {'message': f'Update photo: {name}', 'content': photo_b64}
             if sha:
                 payload['sha'] = sha
