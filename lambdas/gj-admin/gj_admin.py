@@ -388,7 +388,9 @@ def lambda_handler(event, context):
             reason = body.get('reason', 'No reason provided')
             if not pr_number:
                 return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'pr_number required'})}
-            pr_info = github_api('GET', f'/repos/goldenjackets-community/{{"brazil":"golden-jackets-brazil","poland":"golden-jackets-poland","uk":"golden-jackets-uk"}.get(chapter,"")}/pulls/{pr_number}')
+            repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk'}
+            repo = repo_map.get(chapter, '')
+            pr_info = github_api('GET', f'/repos/goldenjackets-community/{repo}/pulls/{pr_number}')
             pr_title = pr_info.get('title', f'PR #{pr_number}')
             result = close_pr(chapter, pr_number)
             if 'error' in result:
