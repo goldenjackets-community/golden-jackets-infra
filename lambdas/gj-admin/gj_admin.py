@@ -64,7 +64,11 @@ def list_prs(chapter):
         return []
     result = github_api('GET', f'/repos/goldenjackets-community/{repo}/pulls?state=open')
     if isinstance(result, list):
-        return [{'number': pr['number'], 'title': pr['title'], 'author': pr['user']['login'], 'created_at': pr['created_at'], 'type': 'member' if 'New Member' in pr['title'] or 'Add member' in pr['title'] else 'article'} for pr in result]
+        prs = []
+        for pr in result:
+            item = {'number': pr['number'], 'title': pr['title'], 'author': pr['user']['login'], 'created_at': pr['created_at'], 'body': pr.get('body', ''), 'type': 'member' if 'New Member' in pr['title'] or 'Add member' in pr['title'] else 'article'}
+            prs.append(item)
+        return prs
     return []
 
 def merge_pr(chapter, pr_number):
@@ -73,6 +77,13 @@ def merge_pr(chapter, pr_number):
     if not repo:
         return {'error': 'Invalid chapter'}
     return github_api('PUT', f'/repos/goldenjackets-community/{repo}/pulls/{pr_number}/merge', {'merge_method': 'squash'})
+
+def close_pr(chapter, pr_number):
+    repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk'}
+    repo = repo_map.get(chapter, '')
+    if not repo:
+        return {'error': 'Invalid chapter'}
+    return github_api('PATCH', f'/repos/goldenjackets-community/{repo}/pulls/{pr_number}', {'state': 'closed'})
 
 def lambda_handler(event, context):
     cors = {
@@ -94,7 +105,12 @@ def lambda_handler(event, context):
         caller_groups = get_user_groups(caller_email)
         is_global_admin = caller_email in GLOBAL_ADMINS
 
-        # If no chapter specified, use caller's first group
+        # If no chapter specified, detect from origin header or use caller's first group
+        if not chapter:
+            origin = event.get('headers', {}).get('origin', '')
+            origin_host = origin.replace('https://', '').replace('http://', '').rstrip('/')
+            origin_chapter_map = {'goldenjacketsbrazil.com': 'brazil', 'www.goldenjacketsbrazil.com': 'brazil', 'goldenjackets.pl': 'poland', 'www.goldenjackets.pl': 'poland', 'goldenjackets.co.uk': 'uk', 'www.goldenjackets.co.uk': 'uk'}
+            chapter = origin_chapter_map.get(origin_host, '')
         if not chapter and caller_groups:
             chapter = caller_groups[0]
 
@@ -367,6 +383,15 @@ def lambda_handler(event, context):
                 return {'statusCode': 400, 'headers': cors, 'body': json.dumps(result)}
             return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'message': f'PR #{pr_number} merged successfully'})}
 
+        elif action == 'close-pr':
+            pr_number = body.get('pr_number')
+            if not pr_number:
+                return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'pr_number required'})}
+            result = close_pr(chapter, pr_number)
+            if 'error' in result:
+                return {'statusCode': 400, 'headers': cors, 'body': json.dumps(result)}
+            return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'message': f'PR #{pr_number} rejected and closed'})}
+
         elif action == 'move-member':
             member_name = body.get('name', '')
             target = body.get('target', '')
@@ -502,6 +527,7 @@ def list_prs(chapter):
                 'title': pr['title'],
                 'author': pr['user']['login'],
                 'created_at': pr['created_at'],
+                'body': pr.get('body', ''),
                 'type': 'member' if 'New Member' in pr['title'] or 'Add member' in pr['title'] else 'article'
             })
         return prs
@@ -512,5 +538,11 @@ def merge_pr(chapter, pr_number):
     repo = repo_map.get(chapter, '')
     if not repo:
         return {'error': 'Invalid chapter'}
-    result = github_api('PUT', f'/repos/goldenjackets-community/{repo}/pulls/{pr_number}/merge', {'merge_method': 'squash'})
-    return result
+    return github_api('PUT', f'/repos/goldenjackets-community/{repo}/pulls/{pr_number}/merge', {'merge_method': 'squash'})
+
+def close_pr(chapter, pr_number):
+    repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk'}
+    repo = repo_map.get(chapter, '')
+    if not repo:
+        return {'error': 'Invalid chapter'}
+    return github_api('PATCH', f'/repos/goldenjackets-community/{repo}/pulls/{pr_number}', {'state': 'closed'})
