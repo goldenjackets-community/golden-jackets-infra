@@ -385,12 +385,17 @@ def lambda_handler(event, context):
 
         elif action == 'close-pr':
             pr_number = body.get('pr_number')
+            reason = body.get('reason', 'No reason provided')
             if not pr_number:
                 return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'pr_number required'})}
+            pr_info = github_api('GET', f'/repos/goldenjackets-community/{{"brazil":"golden-jackets-brazil","poland":"golden-jackets-poland","uk":"golden-jackets-uk"}.get(chapter,"")}/pulls/{pr_number}')
+            pr_title = pr_info.get('title', f'PR #{pr_number}')
             result = close_pr(chapter, pr_number)
             if 'error' in result:
                 return {'statusCode': 400, 'headers': cors, 'body': json.dumps(result)}
-            return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'message': f'PR #{pr_number} rejected and closed'})}
+            sns = boto3.client('sns', region_name='us-east-1')
+            sns.publish(TopicArn='arn:aws:sns:us-east-1:800712212925:goldenjackets-alerts', Subject=f'❌ Article Rejected: {pr_title}', Message=f'Article: {pr_title}\nRejected by: {caller_email}\nReason: {reason}\n\nPlease modify and resubmit if appropriate.')
+            return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'message': f'PR #{pr_number} rejected. Reason sent to author.'})}
 
         elif action == 'move-member':
             member_name = body.get('name', '')
