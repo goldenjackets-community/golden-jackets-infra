@@ -85,6 +85,66 @@ def close_pr(chapter, pr_number):
         return {'error': 'Invalid chapter'}
     return github_api('PATCH', f'/repos/goldenjackets-community/{repo}/pulls/{pr_number}', {'state': 'closed'})
 
+
+def rebuild_remaining_prs(chapter, merged_pr_number):
+    """After merging a PR, rebuild other open article PRs to avoid conflicts."""
+    import base64 as b64, re
+    repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk'}
+    repo = repo_map.get(chapter, '')
+    if not repo:
+        return
+    org = 'goldenjackets-community'
+    open_prs = github_api('GET', f'/repos/{org}/{repo}/pulls?state=open')
+    if not isinstance(open_prs, list):
+        return
+    article_prs = [pr for pr in open_prs if pr['number'] != merged_pr_number and '📝' in pr.get('title', '')]
+    if not article_prs:
+        return
+    for pr in article_prs:
+        try:
+            pr_body = pr.get('body', '')
+            pr_title = pr.get('title', '')
+            old_branch = pr['head']['ref']
+            url_match = re.search(r'\*\*URL:\*\*\s*(https?://[^\s\n]+)', pr_body)
+            summary_match = re.search(r'\*\*Summary:\*\*\s*([^\n]+)', pr_body)
+            author_match = re.search(r'\*\*Author:\*\*\s*([^\n]+)', pr_body)
+            if not url_match:
+                continue
+            url = url_match.group(1)
+            summary = summary_match.group(1) if summary_match else ''
+            author = author_match.group(1) if author_match else 'Unknown'
+            title = pr_title.replace('📝 New article: ', '')
+            # Close old PR and delete branch
+            github_api('PATCH', f'/repos/{org}/{repo}/pulls/{pr["number"]}', {'state': 'closed'})
+            github_api('DELETE', f'/repos/{org}/{repo}/git/refs/heads/{old_branch}')
+            # Get fresh default branch
+            default_branch = 'main'
+            ref_data = github_api('GET', f'/repos/{org}/{repo}/git/ref/heads/main')
+            if 'object' not in ref_data:
+                ref_data = github_api('GET', f'/repos/{org}/{repo}/git/ref/heads/master')
+                default_branch = 'master'
+            master_sha = ref_data['object']['sha']
+            # Create new branch
+            new_branch = old_branch.split('-rebuild')[0] + '-r' + str(merged_pr_number)
+            github_api('POST', f'/repos/{org}/{repo}/git/refs', {'ref': f'refs/heads/{new_branch}', 'sha': master_sha})
+            # Get current index.html
+            index_data = github_api('GET', f'/repos/{org}/{repo}/contents/index.html?ref={new_branch}')
+            content = b64.b64decode(index_data['content']).decode()
+            file_sha = index_data['sha']
+            # Build article card
+            from datetime import datetime
+            date_str = datetime.utcnow().strftime('%b %d, %Y')
+            article_card = f'<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:12px;transition:all 0.3s;" onmouseover="this.style.borderColor=\'rgba(255,215,0,0.4)\'" onmouseout="this.style.borderColor=\'var(--border)\'">\n        <p style="color:var(--text-muted);font-size:0.7em;margin-bottom:4px;"><span style="background:rgba(255,215,0,0.15);color:var(--gold);padding:2px 8px;border-radius:4px;font-size:0.9em;font-weight:600;margin-right:6px;">📝 Article</span> {date_str} · <span style="color:var(--gold);font-style:italic;">{author}</span></p>\n        <a href="{url}" target="_blank" rel="noopener noreferrer" style="color:var(--gold);font-weight:700;font-size:1em;text-decoration:none;">{title}</a>\n        <p style="color:var(--text-muted);font-size:0.85em;margin-top:6px;">{summary}</p>\n      </div>\n'
+            marker = '<!-- END_ARTICLES -->'
+            if marker in content:
+                content = content.replace(marker, article_card + '        ' + marker)
+            new_b64 = b64.b64encode(content.encode()).decode()
+            github_api('PUT', f'/repos/{org}/{repo}/contents/index.html', {'message': f'Add article: {title}', 'content': new_b64, 'branch': new_branch, 'sha': file_sha})
+            # Create new PR
+            github_api('POST', f'/repos/{org}/{repo}/pulls', {'title': pr_title, 'head': new_branch, 'base': default_branch, 'body': pr_body})
+        except:
+            continue
+
 def lambda_handler(event, context):
     cors = {
         'Access-Control-Allow-Origin': '*',
@@ -381,6 +441,8 @@ def lambda_handler(event, context):
             result = merge_pr(chapter, pr_number)
             if 'error' in result:
                 return {'statusCode': 400, 'headers': cors, 'body': json.dumps(result)}
+            # Rebuild remaining article PRs to avoid merge conflicts
+            rebuild_remaining_prs(chapter, pr_number)
             return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'message': f'PR #{pr_number} merged successfully'})}
 
         elif action == 'close-pr':
