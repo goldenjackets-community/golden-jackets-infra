@@ -399,6 +399,37 @@ def lambda_handler(event, context):
             sns.publish(TopicArn='arn:aws:sns:us-east-1:800712212925:goldenjackets-alerts', Subject=f'❌ Article Rejected: {pr_title}', Message=f'Article: {pr_title}\nRejected by: {caller_email}\nReason: {reason}\n\nPlease modify and resubmit if appropriate.')
             return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'message': f'PR #{pr_number} rejected. Reason sent to author.'})}
 
+        elif action == 'update-photo':
+            import base64 as b64mod
+            name = body.get('name', '')
+            photo_b64 = body.get('photo', '')
+            filename = body.get('filename', 'photo.jpg')
+            if not name or not photo_b64:
+                return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'name and photo required'})}
+            repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk'}
+            repo = repo_map.get(chapter, '')
+            if not repo:
+                return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'Invalid chapter'})}
+            safe_name = name.lower().replace(' ', '-')
+            ext = filename.rsplit('.', 1)[-1] if '.' in filename else 'jpg'
+            photo_path = f'assets/members/{safe_name}.{ext}'
+            org = 'goldenjackets-community'
+            token = os.environ.get('GITHUB_TOKEN', '')
+            # Check if file exists (get sha)
+            try:
+                url = f'https://api.github.com/repos/{org}/{repo}/contents/{photo_path}'
+                req = urllib.request.Request(url, headers={'Authorization': f'token {token}', 'Accept': 'application/vnd.github.v3+json', 'User-Agent': 'gj-admin'})
+                resp = urllib.request.urlopen(req)
+                existing = json.loads(resp.read().decode())
+                sha = existing['sha']
+            except:
+                sha = None
+            payload = {'message': f'Update photo: {name}', 'content': photo_b64}
+            if sha:
+                payload['sha'] = sha
+            github_api('PUT', f'/repos/{org}/{repo}/contents/{photo_path}', payload)
+            return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'message': f'Photo updated for {name}. Site will update in ~1 minute.'})}
+
         elif action == 'move-member':
             member_name = body.get('name', '')
             target = body.get('target', '')
