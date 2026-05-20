@@ -399,6 +399,17 @@ def lambda_handler(event, context):
             sns.publish(TopicArn='arn:aws:sns:us-east-1:800712212925:goldenjackets-alerts', Subject=f'❌ Article Rejected: {pr_title}', Message=f'Article: {pr_title}\nRejected by: {caller_email}\nReason: {reason}\n\nPlease modify and resubmit if appropriate.')
             return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'message': f'PR #{pr_number} rejected. Reason sent to author.'})}
 
+        elif action == 'list-members':
+            import base64 as b64, re
+            repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk'}
+            repo = repo_map.get(chapter, '')
+            if not repo:
+                return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'Invalid chapter'})}
+            index_data = github_api('GET', f'/repos/goldenjackets-community/{repo}/contents/index.html')
+            content = b64.b64decode(index_data.get('content', '')).decode()
+            names = re.findall(r'<h3>([^<]+)</h3>', content)
+            return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'members': names})}
+
         elif action == 'update-photo':
             name = body.get('name', '')
             photo_b64 = body.get('photo', '')
