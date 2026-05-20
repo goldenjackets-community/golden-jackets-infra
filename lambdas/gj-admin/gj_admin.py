@@ -400,7 +400,6 @@ def lambda_handler(event, context):
             return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'message': f'PR #{pr_number} rejected. Reason sent to author.'})}
 
         elif action == 'update-photo':
-            import base64 as b64mod
             name = body.get('name', '')
             photo_b64 = body.get('photo', '')
             filename = body.get('filename', 'photo.jpg')
@@ -414,16 +413,9 @@ def lambda_handler(event, context):
             ext = filename.rsplit('.', 1)[-1] if '.' in filename else 'jpg'
             photo_path = f'assets/members/{safe_name}.{ext}'
             org = 'goldenjackets-community'
-            token = os.environ.get('GITHUB_TOKEN', '')
             # Check if file exists (get sha)
-            try:
-                url = f'https://api.github.com/repos/{org}/{repo}/contents/{photo_path}'
-                req = urllib.request.Request(url, headers={'Authorization': f'token {token}', 'Accept': 'application/vnd.github.v3+json', 'User-Agent': 'gj-admin'})
-                resp = urllib.request.urlopen(req)
-                existing = json.loads(resp.read().decode())
-                sha = existing['sha']
-            except:
-                sha = None
+            existing = github_api('GET', f'/repos/{org}/{repo}/contents/{photo_path}')
+            sha = existing.get('sha') if 'sha' in existing else None
             payload = {'message': f'Update photo: {name}', 'content': photo_b64}
             if sha:
                 payload['sha'] = sha
