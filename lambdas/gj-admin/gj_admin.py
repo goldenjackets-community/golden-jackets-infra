@@ -3,6 +3,7 @@ import json
 import boto3
 import urllib.request
 import os
+import time
 
 cognito = boto3.client('cognito-idp', region_name='us-east-1')
 backup = boto3.client('backup', region_name='us-east-1')
@@ -72,11 +73,9 @@ def list_prs(chapter):
     return []
 
 def merge_pr(chapter, pr_number):
-    repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk'}
-    repo = repo_map.get(chapter, '')
-    if not repo:
-        return {'error': 'Invalid chapter'}
-    return github_api('PUT', f'/repos/goldenjackets-community/{repo}/pulls/{pr_number}/merge', {'merge_method': 'squash'})
+    # Duplicate removed - see definition at line ~656
+    pass
+
 
 def close_pr(chapter, pr_number):
     repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk'}
@@ -658,7 +657,19 @@ def merge_pr(chapter, pr_number):
     repo = repo_map.get(chapter, '')
     if not repo:
         return {'error': 'Invalid chapter'}
-    return github_api('PUT', f'/repos/goldenjackets-community/{repo}/pulls/{pr_number}/merge', {'merge_method': 'squash'})
+    base = f'/repos/goldenjackets-community/{repo}/pulls/{pr_number}'
+    # Get PR head SHA for update-branch
+    pr_info = github_api('GET', base)
+    head_sha = pr_info.get('head', {}).get('sha', '') if isinstance(pr_info, dict) else ''
+    # Update branch with base to resolve simple conflicts
+    if head_sha:
+        github_api('PUT', f'{base}/update-branch', {'expected_head_sha': head_sha})
+        time.sleep(3)
+    # Attempt merge
+    result = github_api('PUT', f'{base}/merge', {'merge_method': 'squash'})
+    if isinstance(result, dict) and 'error' in result and 'conflict' in str(result.get('error', '')).lower():
+        return {'error': 'Merge conflict that cannot be auto-resolved. Contact an admin.'}
+    return result
 
 def close_pr(chapter, pr_number):
     repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk'}
