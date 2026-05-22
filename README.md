@@ -25,3 +25,7 @@ Push to `main` → GitHub Actions deploys Lambda automatically.
 - Global admins see all chapters
 - Chapter admins only see their own users
 - Restore restricted to global admins only
+
+## 🤖 Built With AI
+
+This project was entirely built using **Kiro CLI** (powered by Claude, Anthropic) — from Lambda functions to IAM policies, CI/CD workflows, and operational guides.
