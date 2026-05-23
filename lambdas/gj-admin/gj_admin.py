@@ -540,7 +540,7 @@ def lambda_handler(event, context):
             email = body.get("email", "unknown")
             sns = boto3.client("sns", region_name="us-east-1")
             sns.publish(
-                TopicArn="arn:aws:sns:us-east-1:800712212925:goldenjackets-alerts",
+                TopicArn="arn:aws:sns:us-east-1:800712212925:gj-brazil-alerts",
                 Subject=trunc_subject(f"💡 Topic Suggestion: {topic}"),
                 Message=f"New topic suggestion!\n\nFrom: {name} ({email})\nType: {stype}\nTopic: {topic}"
             )
