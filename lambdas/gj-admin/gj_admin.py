@@ -5,6 +5,8 @@ import urllib.request
 import os
 import time
 
+def trunc_subject(s): return s[:100]
+
 cognito = boto3.client('cognito-idp', region_name='us-east-1')
 backup = boto3.client('backup', region_name='us-east-1')
 POOL_ID = 'us-east-1_Z0VzzrmIX'
@@ -353,7 +355,7 @@ def lambda_handler(event, context):
             sns = boto3.client('sns', region_name='us-east-1')
             sns.publish(
                 TopicArn='arn:aws:sns:us-east-1:800712212925:goldenjackets-alerts',
-                Subject=f'📝 New Article: {title}',
+                Subject=trunc_subject(f'📝 New Article: {title}'),
                 Message=f'Author: {author}\nTitle: {title}\nURL: {url}\nSummary: {summary}\n\nPR created on GitHub.'
             )
 
@@ -379,7 +381,7 @@ def lambda_handler(event, context):
             sns = boto3.client('sns', region_name='us-east-1')
             sns.publish(
                 TopicArn='arn:aws:sns:us-east-1:800712212925:goldenjackets-alerts',
-                Subject=f"💼 New Job Posted: {item['role']} @ {item['company']}",
+                Subject=trunc_subject(f"💼 New Job Posted: {item['role']} @ {item['company']}"),
                 Message=f"Role: {item['role']}\nCompany: {item['company']}\nLocation: {item['location']}\nLink: {item['link']}\nContact: {item['contact']}\nPosted by: {item['posted_by']}"
             )
             return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'message': 'Job posted!', 'id': item['id']})}
@@ -411,19 +413,19 @@ def lambda_handler(event, context):
             # Notify poster
             sns.publish(
                 TopicArn='arn:aws:sns:us-east-1:800712212925:goldenjackets-alerts',
-                Subject=f"🤝 Someone is interested in your job: {role} @ {company}",
+                Subject=trunc_subject(f"🤝 Someone is interested in your job: {role} @ {company}"),
                 Message=f"Hi {poster_email}!\n\n{applicant_email} is interested in your job posting:\n\nRole: {role}\nCompany: {company}\n\nPlease connect with them directly.\n\n— Golden Jackets Job Board"
             )
             # Notify applicant
             sns.publish(
                 TopicArn='arn:aws:sns:us-east-1:800712212925:goldenjackets-alerts',
-                Subject=f"✅ You applied: {role} @ {company}",
+                Subject=trunc_subject(f"✅ You applied: {role} @ {company}"),
                 Message=f"Hi {applicant_email}!\n\nYou expressed interest in:\n\nRole: {role}\nCompany: {company}\nPosted by: {poster_email}\n\nThe poster has been notified. You can also reach them directly.\n\n— Golden Jackets Job Board"
             )
             # Notify founder
             sns.publish(
                 TopicArn='arn:aws:sns:us-east-1:800712212925:goldenjackets-alerts',
-                Subject=f"💼 Job Match: {applicant_email} → {role} @ {company}",
+                Subject=trunc_subject(f"💼 Job Match: {applicant_email} → {role} @ {company}"),
                 Message=f"Applicant: {applicant_email}\nJob: {role} @ {company}\nPoster: {poster_email}"
             )
             return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'message': 'Interest sent! The poster has been notified.'})}
@@ -457,7 +459,7 @@ def lambda_handler(event, context):
             if 'error' in result:
                 return {'statusCode': 400, 'headers': cors, 'body': json.dumps(result)}
             sns = boto3.client('sns', region_name='us-east-1')
-            sns.publish(TopicArn='arn:aws:sns:us-east-1:800712212925:goldenjackets-alerts', Subject=f'❌ Article Rejected: {pr_title}', Message=f'Article: {pr_title}\nRejected by: {caller_email}\nReason: {reason}\n\nPlease modify and resubmit if appropriate.')
+            sns.publish(TopicArn='arn:aws:sns:us-east-1:800712212925:goldenjackets-alerts', Subject=trunc_subject(f'❌ Article Rejected: {pr_title}'), Message=f'Article: {pr_title}\nRejected by: {caller_email}\nReason: {reason}\n\nPlease modify and resubmit if appropriate.')
             return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'message': f'PR #{pr_number} rejected. Reason sent to author.'})}
 
         elif action == 'list-members':
