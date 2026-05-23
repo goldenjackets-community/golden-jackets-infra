@@ -532,6 +532,19 @@ def lambda_handler(event, context):
     except Exception as e:
         return {'statusCode': 500, 'headers': cors, 'body': json.dumps({'error': str(e)})}
 
+
+        elif action == "suggest-topic":
+            topic = body.get("topic", "")
+            name = body.get("name", "")
+            stype = body.get("type", "podcast")
+            email = body.get("email", "unknown")
+            sns = boto3.client("sns", region_name="us-east-1")
+            sns.publish(
+                TopicArn="arn:aws:sns:us-east-1:800712212925:goldenjackets-alerts",
+                Subject=trunc_subject(f"💡 Topic Suggestion: {topic}"),
+                Message=f"New topic suggestion!\n\nFrom: {name} ({email})\nType: {stype}\nTopic: {topic}"
+            )
+            return {"statusCode": 200, "headers": cors, "body": json.dumps({"message": "Suggestion received!"})}
 # --- PR Management (Pending Applications & Articles) ---
 import urllib.request
 import os
