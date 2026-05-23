@@ -525,6 +525,19 @@ def lambda_handler(event, context):
                 return {'statusCode': 400, 'headers': cors, 'body': json.dumps(result)}
             return {'statusCode': 200, 'headers': cors, 'body': json.dumps(result)}
 
+
+        elif action == "suggest-topic":
+            topic = body.get("topic", "")
+            name = body.get("name", "")
+            stype = body.get("type", "podcast")
+            email = body.get("email", "unknown")
+            sns_client = boto3.client("sns", region_name="us-east-1")
+            sns_client.publish(
+                TopicArn="arn:aws:sns:us-east-1:800712212925:gj-brazil-alerts",
+                Subject=trunc_subject("Topic Suggestion: " + topic),
+                Message="New topic suggestion!\n\nFrom: " + name + " (" + email + ")\nType: " + stype + "\nTopic: " + topic
+            )
+            return {"statusCode": 200, "headers": cors, "body": json.dumps({"message": "Suggestion received!"})}
         else:
             return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'unknown action'})}
 
@@ -532,19 +545,6 @@ def lambda_handler(event, context):
     except Exception as e:
         return {'statusCode': 500, 'headers': cors, 'body': json.dumps({'error': str(e)})}
 
-
-        elif action == "suggest-topic":
-            topic = body.get("topic", "")
-            name = body.get("name", "")
-            stype = body.get("type", "podcast")
-            email = body.get("email", "unknown")
-            sns = boto3.client("sns", region_name="us-east-1")
-            sns.publish(
-                TopicArn="arn:aws:sns:us-east-1:800712212925:gj-brazil-alerts",
-                Subject=trunc_subject(f"💡 Topic Suggestion: {topic}"),
-                Message=f"New topic suggestion!\n\nFrom: {name} ({email})\nType: {stype}\nTopic: {topic}"
-            )
-            return {"statusCode": 200, "headers": cors, "body": json.dumps({"message": "Suggestion received!"})}
 # --- PR Management (Pending Applications & Articles) ---
 import urllib.request
 import os
