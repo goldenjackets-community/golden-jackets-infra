@@ -61,7 +61,7 @@ def github_api(method, path, body=None):
         return {'error': str(e)}
 
 def list_prs(chapter):
-    repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk'}
+    repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk', 'chile': 'golden-jackets-chile'}
     repo = repo_map.get(chapter, '')
     if not repo:
         return []
@@ -80,7 +80,7 @@ def merge_pr(chapter, pr_number):
 
 
 def close_pr(chapter, pr_number):
-    repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk'}
+    repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk', 'chile': 'golden-jackets-chile'}
     repo = repo_map.get(chapter, '')
     if not repo:
         return {'error': 'Invalid chapter'}
@@ -90,7 +90,7 @@ def close_pr(chapter, pr_number):
 def rebuild_remaining_prs(chapter, merged_pr_number):
     """After merging a PR, rebuild other open article PRs to avoid conflicts."""
     import base64 as b64, re
-    repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk'}
+    repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk', 'chile': 'golden-jackets-chile'}
     repo = repo_map.get(chapter, '')
     if not repo:
         return
@@ -170,7 +170,7 @@ def lambda_handler(event, context):
         if not chapter:
             origin = event.get('headers', {}).get('origin', '')
             origin_host = origin.replace('https://', '').replace('http://', '').rstrip('/')
-            origin_chapter_map = {'goldenjacketsbrazil.com': 'brazil', 'www.goldenjacketsbrazil.com': 'brazil', 'goldenjackets.pl': 'poland', 'www.goldenjackets.pl': 'poland', 'goldenjackets.co.uk': 'uk', 'www.goldenjackets.co.uk': 'uk'}
+            origin_chapter_map = {'goldenjacketsbrazil.com': 'brazil', 'www.goldenjacketsbrazil.com': 'brazil', 'goldenjackets.pl': 'poland', 'www.goldenjackets.pl': 'poland', 'goldenjackets.co.uk': 'uk', 'www.goldenjackets.co.uk': 'uk', 'goldenjackets.cl': 'chile', 'www.goldenjackets.cl': 'chile'}
             chapter = origin_chapter_map.get(origin_host, '')
         if not chapter and caller_groups:
             chapter = caller_groups[0]
@@ -256,7 +256,7 @@ def lambda_handler(event, context):
             if not is_global_admin:
                 return {'statusCode': 403, 'headers': cors, 'body': json.dumps({'error': 'Only global admins can restore backups'})}
             vault = {'poland': 'gj-poland-backups', 'uk': 'gj-uk-backups'}.get(chapter, 'gj-site-backups')
-            bucket = 'goldenjackets.pl' if chapter == 'poland' else 'www.goldenjacketsbrazil.com'
+            bucket = 'goldenjackets.pl' if chapter == 'poland' else 'goldenjackets.cl' if chapter == 'chile' else 'www.goldenjacketsbrazil.com'
             jobs = backup.list_backup_jobs(MaxResults=1, ByBackupVaultName=vault, ByState='COMPLETED')
             if not jobs.get('BackupJobs'):
                 return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'message': 'No completed backups found yet'})}
@@ -277,7 +277,7 @@ def lambda_handler(event, context):
             summary = body.get('summary', '')
             author = body.get('author', 'unknown')
             GH_TOKEN = os.environ.get('GITHUB_TOKEN', '')
-            article_repo_map = {'brazil': 'goldenjackets-community/golden-jackets-brazil', 'poland': 'goldenjackets-community/golden-jackets-poland', 'uk': 'goldenjackets-community/golden-jackets-uk'}
+            article_repo_map = {'brazil': 'goldenjackets-community/golden-jackets-brazil', 'poland': 'goldenjackets-community/golden-jackets-poland', 'uk': 'goldenjackets-community/golden-jackets-uk', 'chile': 'goldenjackets-community/golden-jackets-chile'}
             REPO = article_repo_map.get(chapter, 'goldenjackets-community/golden-jackets-brazil')
 
             def gh_api(method, path, data=None):
@@ -451,7 +451,7 @@ def lambda_handler(event, context):
             reason = body.get('reason', 'No reason provided')
             if not pr_number:
                 return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'pr_number required'})}
-            repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk'}
+            repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk', 'chile': 'golden-jackets-chile'}
             repo = repo_map.get(chapter, '')
             pr_info = github_api('GET', f'/repos/goldenjackets-community/{repo}/pulls/{pr_number}')
             pr_title = pr_info.get('title', f'PR #{pr_number}')
@@ -464,7 +464,7 @@ def lambda_handler(event, context):
 
         elif action == 'list-members':
             import base64 as b64, re
-            repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk'}
+            repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk', 'chile': 'golden-jackets-chile'}
             repo = repo_map.get(chapter, '')
             if not repo:
                 return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'Invalid chapter'})}
@@ -479,7 +479,7 @@ def lambda_handler(event, context):
             filename = body.get('filename', 'photo.jpg')
             if not name or not photo_b64:
                 return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'name and photo required'})}
-            repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk'}
+            repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk', 'chile': 'golden-jackets-chile'}
             repo = repo_map.get(chapter, '')
             if not repo:
                 return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'Invalid chapter'})}
@@ -563,7 +563,7 @@ def github_api(method, path, body=None):
 
 def move_member_card(chapter, member_name, target):
     import re, base64
-    repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk'}
+    repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk', 'chile': 'golden-jackets-chile'}
     repo = repo_map.get(chapter, '')
     if not repo:
         return {'error': 'Invalid chapter'}
@@ -648,7 +648,7 @@ def move_member_card(chapter, member_name, target):
         return {'error': f'Failed to update: {str(e)}'}
 
 def list_prs(chapter):
-    repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk'}
+    repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk', 'chile': 'golden-jackets-chile'}
     repo = repo_map.get(chapter, '')
     if not repo:
         return []
@@ -668,7 +668,7 @@ def list_prs(chapter):
     return []
 
 def merge_pr(chapter, pr_number):
-    repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk'}
+    repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk', 'chile': 'golden-jackets-chile'}
     repo = repo_map.get(chapter, '')
     if not repo:
         return {'error': 'Invalid chapter'}
@@ -687,7 +687,7 @@ def merge_pr(chapter, pr_number):
     return result
 
 def close_pr(chapter, pr_number):
-    repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk'}
+    repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk', 'chile': 'golden-jackets-chile'}
     repo = repo_map.get(chapter, '')
     if not repo:
         return {'error': 'Invalid chapter'}
