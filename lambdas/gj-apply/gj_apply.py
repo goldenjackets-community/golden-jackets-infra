@@ -11,6 +11,8 @@ REPO_MAP = {
     'www.goldenjackets.pl': 'goldenjackets-community/golden-jackets-poland',
     'goldenjackets.co.uk': 'goldenjackets-community/golden-jackets-uk',
     'www.goldenjackets.co.uk': 'goldenjackets-community/golden-jackets-uk',
+    'goldenjackets.cl': 'goldenjackets-community/golden-jackets-chile',
+    'www.goldenjackets.cl': 'goldenjackets-community/golden-jackets-chile',
 }
 DEFAULT_REPO = os.environ.get('GITHUB_REPO', 'goldenjackets-community/golden-jackets-brazil')
 
