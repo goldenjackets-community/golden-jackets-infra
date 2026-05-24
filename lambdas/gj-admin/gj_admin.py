@@ -241,7 +241,7 @@ def lambda_handler(event, context):
             return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'resent': resent, 'count': len(resent)})}
 
         elif action == 'backup-status':
-            vault = {'poland': 'gj-poland-backups', 'uk': 'gj-uk-backups'}.get(chapter, 'gj-site-backups')
+            vault = {'poland': 'gj-poland-backups', 'uk': 'gj-uk-backups', 'chile': 'gj-chile-backups'}.get(chapter, 'gj-site-backups')
             jobs = backup.list_backup_jobs(MaxResults=10, ByBackupVaultName=vault)
             result = []
             for j in jobs.get('BackupJobs', []):
@@ -255,7 +255,7 @@ def lambda_handler(event, context):
         elif action == 'restore-backup':
             if not is_global_admin:
                 return {'statusCode': 403, 'headers': cors, 'body': json.dumps({'error': 'Only global admins can restore backups'})}
-            vault = {'poland': 'gj-poland-backups', 'uk': 'gj-uk-backups'}.get(chapter, 'gj-site-backups')
+            vault = {'poland': 'gj-poland-backups', 'uk': 'gj-uk-backups', 'chile': 'gj-chile-backups'}.get(chapter, 'gj-site-backups')
             bucket = 'goldenjackets.pl' if chapter == 'poland' else 'goldenjackets.cl' if chapter == 'chile' else 'www.goldenjacketsbrazil.com'
             jobs = backup.list_backup_jobs(MaxResults=1, ByBackupVaultName=vault, ByState='COMPLETED')
             if not jobs.get('BackupJobs'):
