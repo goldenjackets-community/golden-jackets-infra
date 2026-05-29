@@ -88,8 +88,8 @@ def close_pr(chapter, pr_number):
 
 
 def rebuild_remaining_prs(chapter, merged_pr_number):
-    """After merging a PR, rebuild other open article PRs to avoid conflicts."""
-    import base64 as b64, re
+    """After merging a PR, rebuild ALL other open PRs to avoid conflicts."""
+    import base64 as b64
     repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk', 'chile': 'golden-jackets-chile'}
     repo = repo_map.get(chapter, '')
     if not repo:
@@ -98,51 +98,59 @@ def rebuild_remaining_prs(chapter, merged_pr_number):
     open_prs = github_api('GET', f'/repos/{org}/{repo}/pulls?state=open')
     if not isinstance(open_prs, list):
         return
-    article_prs = [pr for pr in open_prs if pr['number'] != merged_pr_number and '📝' in pr.get('title', '')]
-    if not article_prs:
+    remaining = [pr for pr in open_prs if pr['number'] != merged_pr_number]
+    if not remaining:
         return
-    for pr in article_prs:
+    for pr in remaining:
         try:
             pr_body = pr.get('body', '')
             pr_title = pr.get('title', '')
             old_branch = pr['head']['ref']
-            url_match = re.search(r'\*\*URL:\*\*\s*(https?://[^\s\n]+)', pr_body)
-            summary_match = re.search(r'\*\*Summary:\*\*\s*([^\n]+)', pr_body)
-            author_match = re.search(r'\*\*Author:\*\*\s*([^\n]+)', pr_body)
-            if not url_match:
+            pr_number = pr['number']
+            # Get files from old PR (before closing)
+            files = github_api('GET', f'/repos/{org}/{repo}/pulls/{pr_number}/files')
+            if not isinstance(files, list) or not files:
                 continue
-            url = url_match.group(1)
-            summary = summary_match.group(1) if summary_match else ''
-            author = author_match.group(1) if author_match else 'Unknown'
-            title = pr_title.replace('📝 New article: ', '')
-            # Close old PR and delete branch
-            github_api('PATCH', f'/repos/{org}/{repo}/pulls/{pr["number"]}', {'state': 'closed'})
-            github_api('DELETE', f'/repos/{org}/{repo}/git/refs/heads/{old_branch}')
-            # Get fresh default branch
+            # Close old PR
+            github_api('PATCH', f'/repos/{org}/{repo}/pulls/{pr_number}', {'state': 'closed'})
+            # Get default branch
             default_branch = 'main'
             ref_data = github_api('GET', f'/repos/{org}/{repo}/git/ref/heads/main')
             if 'object' not in ref_data:
                 ref_data = github_api('GET', f'/repos/{org}/{repo}/git/ref/heads/master')
                 default_branch = 'master'
             master_sha = ref_data['object']['sha']
-            # Create new branch
-            new_branch = old_branch.split('-rebuild')[0] + '-r' + str(merged_pr_number)
+            # Create new branch from fresh master
+            new_branch = old_branch.split('-r')[0] + '-r' + str(merged_pr_number)
             github_api('POST', f'/repos/{org}/{repo}/git/refs', {'ref': f'refs/heads/{new_branch}', 'sha': master_sha})
-            # Get current index.html
-            index_data = github_api('GET', f'/repos/{org}/{repo}/contents/index.html?ref={new_branch}')
-            content = b64.b64decode(index_data['content']).decode()
-            file_sha = index_data['sha']
-            # Build article card
-            from datetime import datetime
-            date_str = datetime.utcnow().strftime('%b %d, %Y')
-            article_card = f'<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:12px;transition:all 0.3s;" onmouseover="this.style.borderColor=\'rgba(255,215,0,0.4)\'" onmouseout="this.style.borderColor=\'var(--border)\'">\n        <p style="color:var(--text-muted);font-size:0.7em;margin-bottom:4px;"><span style="background:rgba(255,215,0,0.15);color:var(--gold);padding:2px 8px;border-radius:4px;font-size:0.9em;font-weight:600;margin-right:6px;">📝 Article</span> {date_str} · <span style="color:var(--gold);font-style:italic;">{author}</span></p>\n        <a href="{url}" target="_blank" rel="noopener noreferrer" style="color:var(--gold);font-weight:700;font-size:1em;text-decoration:none;">{title}</a>\n        <p style="color:var(--text-muted);font-size:0.85em;margin-top:6px;">{summary}</p>\n      </div>\n'
-            marker = '<!-- END_ARTICLES -->'
-            if marker in content:
-                content = content.replace(marker, article_card + '        ' + marker)
-            new_b64 = b64.b64encode(content.encode()).decode()
-            github_api('PUT', f'/repos/{org}/{repo}/contents/index.html', {'message': f'Add article: {title}', 'content': new_b64, 'branch': new_branch, 'sha': file_sha})
+            # Copy each file from old PR to new branch
+            for f in files:
+                if f.get('status') == 'removed':
+                    continue
+                filepath = f['filename']
+                # Get file content from old branch (use blob sha)
+                blob_sha = f.get('sha')
+                if not blob_sha:
+                    continue
+                blob = github_api('GET', f'/repos/{org}/{repo}/git/blobs/{blob_sha}')
+                content_b64 = blob.get('content', '').replace('\n', '')
+                # Get current sha on new branch (if file exists)
+                try:
+                    existing = github_api('GET', f'/repos/{org}/{repo}/contents/{filepath}?ref={new_branch}')
+                    existing_sha = existing['sha']
+                except:
+                    existing_sha = None
+                payload = {'message': f'Rebuild: {filepath}', 'content': content_b64, 'branch': new_branch}
+                if existing_sha:
+                    payload['sha'] = existing_sha
+                github_api('PUT', f'/repos/{org}/{repo}/contents/{filepath}', payload)
+            # Delete old branch
+            try:
+                github_api('DELETE', f'/repos/{org}/{repo}/git/refs/heads/{old_branch}')
+            except:
+                pass
             # Create new PR
-            github_api('POST', f'/repos/{org}/{repo}/pulls', {'title': pr_title, 'head': new_branch, 'base': default_branch, 'body': pr_body})
+            github_api('POST', f'/repos/{org}/{repo}/pulls', {'title': pr_title, 'head': new_branch, 'base': default_branch, 'body': pr_body + '\n\n_Rebuilt automatically after PR merge to avoid conflicts._'})
         except:
             continue
 
