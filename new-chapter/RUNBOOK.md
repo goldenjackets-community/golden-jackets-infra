@@ -103,6 +103,8 @@ O script cria automaticamente:
 | Poland | goldenjackets.pl | E174XK4PPCRG0L | Z07410873K29FYP3PO6JN | gj-poland-backups |
 | UK | goldenjackets.co.uk | E10YX1BT67IAVC | Z03540612CJAESUCY0I5D | gj-uk-backups |
 | Chile | goldenjackets.cl | EHYKP6CKN2HQ4 | Z06351033U1V5Y6NG588Z | gj-chile-backups |
+| India | goldenjackets.in | E3NWIF50KGT06C | Z09802801P2NF2IURPLMW | gj-india-backups |
+| France | goldenjackets.fr | (pending) | (pending) | gj-france-backups |
 
 ## Conta AWS
 - **Account:** 800712212925 (GoldenJackets-Community)
