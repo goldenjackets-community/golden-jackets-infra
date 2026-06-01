@@ -211,40 +211,111 @@ echo "✅ Chapter leader added: ${LEADER_EMAIL} → ${CODE}"
 echo ""
 
 echo "=== STEP 9: GitHub Repository ==="
-echo "⚠️  Create repo manually on GitHub:"
-echo "   1. Go to https://github.com/organizations/${REPO_ORG}/repositories/new"
-echo "   2. Name: ${REPO_NAME}"
-echo "   3. Private → Public"
-echo "   4. Clone golden-jackets-chile as template"
-echo "   5. Add secret CLOUDFRONT_DIST_ID = <CloudFront ID from step 4>"
+# Create repo from Chile template using gh CLI
+gh repo create "${REPO_ORG}/${REPO_NAME}" --public --clone --template "${REPO_ORG}/golden-jackets-chile" 2>/dev/null || echo "   (repo may already exist)"
+if [ -d "${REPO_NAME}" ]; then
+  cd "${REPO_NAME}"
+  # Set default branch
+  git checkout -b ${BRANCH} 2>/dev/null || git checkout ${BRANCH}
+  if [ "${BRANCH}" != "main" ]; then
+    git push -u origin ${BRANCH} 2>/dev/null
+    gh repo edit "${REPO_ORG}/${REPO_NAME}" --default-branch ${BRANCH}
+  fi
+  cd ..
+  rm -rf "${REPO_NAME}"
+fi
+# Add CLOUDFRONT_DIST_ID secret (CF_ID from step 4)
+if [ -n "${CF_ID}" ] && [ "${CF_ID}" != "MANUAL" ]; then
+  gh secret set CLOUDFRONT_DIST_ID --repo "${REPO_ORG}/${REPO_NAME}" --body "${CF_ID}" 2>/dev/null || true
+fi
+echo "✅ GitHub repo: ${REPO_ORG}/${REPO_NAME} (branch: ${BRANCH})"
 echo ""
 
-echo "=== STEP 10: Update Shared Lambdas ==="
-echo "⚠️  MANUAL — Add to gj-apply REPO_MAP:"
-echo "   '${DOMAIN}': '${REPO_ORG}/${REPO_NAME}',"
-echo "   'www.${DOMAIN}': '${REPO_ORG}/${REPO_NAME}',"
+echo "=== STEP 10: Update gj-apply Lambda (REPO_MAP) ==="
+APPLY_FILE="/home/gulias/golden-jackets-infra/lambdas/gj-apply/gj_apply.py"
+# Add domain mappings to REPO_MAP
+if ! grep -q "'${DOMAIN}'" "${APPLY_FILE}" 2>/dev/null; then
+  sed -i "/^REPO_MAP = {/a\\    '${DOMAIN}': '${REPO_ORG}/${REPO_NAME}',\n    'www.${DOMAIN}': '${REPO_ORG}/${REPO_NAME}'," "${APPLY_FILE}"
+  echo "✅ REPO_MAP updated in gj-apply"
+else
+  echo "   (already in REPO_MAP)"
+fi
 echo ""
-echo "⚠️  MANUAL — Add to gj-admin chapter mappings"
-echo "⚠️  MANUAL — Add CORS origin: https://${DOMAIN}"
+
+echo "=== STEP 11: Update gj-admin Lambda (chapter mappings) ==="
+ADMIN_FILE="/home/gulias/golden-jackets-infra/lambdas/gj-admin/gj_admin.py"
+# Add to ORIGIN_MAP if it exists
+if grep -q "ORIGIN_MAP" "${ADMIN_FILE}" 2>/dev/null; then
+  if ! grep -q "'${DOMAIN}'" "${ADMIN_FILE}"; then
+    sed -i "/ORIGIN_MAP = {/a\\    '${DOMAIN}': '${CODE}',\n    'www.${DOMAIN}': '${CODE}'," "${ADMIN_FILE}"
+    echo "✅ ORIGIN_MAP updated in gj-admin"
+  else
+    echo "   (already in ORIGIN_MAP)"
+  fi
+fi
+# Add to REPO_MAP in admin if exists
+if grep -q "REPO_MAP" "${ADMIN_FILE}" 2>/dev/null; then
+  if ! grep -q "'${CODE}'" "${ADMIN_FILE}"; then
+    sed -i "/REPO_MAP.*=.*{/a\\    '${CODE}': '${REPO_ORG}/${REPO_NAME}'," "${ADMIN_FILE}"
+    echo "✅ REPO_MAP updated in gj-admin"
+  fi
+fi
+echo ""
+
+echo "=== STEP 12: Update API Gateway CORS ==="
+API_ID="kqiq2bltjd"
+CURRENT_CORS=$(aws apigatewayv2 get-api --api-id ${API_ID} --profile ${PROFILE} --region ${REGION} --query 'CorsConfiguration.AllowOrigins' --output text 2>/dev/null)
+if ! echo "${CURRENT_CORS}" | grep -q "${DOMAIN}"; then
+  # Get current origins and add new one
+  aws apigatewayv2 update-api --api-id ${API_ID} \
+    --cors-configuration "AllowOrigins=https://${DOMAIN},https://www.${DOMAIN},https://goldenjacketsbrazil.com,https://www.goldenjacketsbrazil.com,https://goldenjackets.pl,https://www.goldenjackets.pl,https://goldenjackets.co.uk,https://www.goldenjackets.co.uk,https://goldenjackets.cl,https://www.goldenjackets.cl,AllowMethods=POST,OPTIONS,GET,AllowHeaders=Content-Type,Authorization" \
+    --profile ${PROFILE} --region ${REGION} > /dev/null 2>&1
+  echo "✅ CORS updated: https://${DOMAIN}"
+else
+  echo "   (CORS already includes ${DOMAIN})"
+fi
+echo ""
+
+echo "=== STEP 13: Deploy updated Lambdas ==="
+cd /home/gulias/golden-jackets-infra
+git add -A
+git commit -m "Add ${COUNTRY} to all chapter mappings (REPO_MAP, ORIGIN_MAP, CORS)" 2>/dev/null || true
+git push origin main 2>/dev/null || true
+echo "✅ Lambda code pushed (GitHub Actions will deploy)"
+echo ""
+
+echo "=== STEP 14: Add SNS subscription for chapter leader ==="
+aws sns subscribe \
+  --topic-arn "arn:aws:sns:${REGION}:${ACCOUNT}:goldenjackets-alerts" \
+  --protocol email \
+  --notification-endpoint "${LEADER_EMAIL}" \
+  --profile ${PROFILE} --region ${REGION} > /dev/null 2>&1
+echo "✅ SNS subscription created (${LEADER_EMAIL} needs to confirm)"
 echo ""
 
 echo "======================================"
-echo "🎉 INFRA DONE! Next steps:"
-echo ""
-echo "1. Wait for nameservers to propagate (chapter leader points domain)"
-echo "2. Validate ACM certificate (add DNS CNAME record)"
-echo "3. Add custom domain to CloudFront (after cert validates)"
-echo "4. Create Route53 A+AAAA alias records → CloudFront"
-echo "5. Clone site from Chile, customize (map, translations, members)"
-echo "6. Push to repo → GitHub Actions deploys automatically"
-echo "7. Update global site (counter, flight paths, ticker)"
+echo "🎉 SETUP COMPLETE!"
 echo ""
 echo "📝 Resources created:"
 echo "   Hosted Zone: ${HZ_ID}"
 echo "   Certificate: ${CERT_ARN}"
 echo "   S3 Bucket: ${BUCKET}"
+echo "   CloudFront: ${CF_ID}"
 echo "   DynamoDB: ${COUNTER_TABLE}"
 echo "   Lambda: ${COUNTER_FUNCTION} (${FUNC_URL})"
 echo "   Backup Vault: ${BACKUP_VAULT}"
 echo "   Cognito Group: ${CODE}"
 echo "   Chapter Leader: ${LEADER_EMAIL}"
+echo "   GitHub Repo: ${REPO_ORG}/${REPO_NAME}"
+echo ""
+echo "⏳ Remaining (requires DNS propagation):"
+echo "   1. Chapter leader points nameservers at registrar"
+echo "   2. ACM certificate validates automatically"
+echo "   3. Add custom domain to CloudFront"
+echo "   4. Create Route53 A+AAAA alias → CloudFront"
+echo ""
+echo "🌐 Nameservers to send to ${LEADER_NAME}:"
+aws route53 get-hosted-zone --id ${HZ_ID} --profile ${PROFILE} \
+  --query 'DelegationSet.NameServers' --output table
+echo ""
+echo "📱 Customize site: clone repo, update index.html (map, members, translations)"
