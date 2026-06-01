@@ -38,7 +38,13 @@
 
 ### Site Customization
 - [ ] Country name, flag, domain updated throughout
-- [ ] Map SVG with real states/regions of the country
+- [ ] Map SVG with real geographic state/region paths (NOT geometric shapes)
+  - Use a public SVG source with real boundaries (e.g. SimpleMaps, Natural Earth, GitHub repos)
+  - Add `data-state="XX"` to each path for filtering
+  - Highlight the Chapter Leader's state with `class="active"`
+  - Add state code labels (`<text>` elements) centered on each state
+  - Remove inline fills — let CSS theme control colors via `#[country]-map path` rules
+  - Set `pointer-events:none` on text labels
 - [ ] Chapter Leader card as member #1
 - [ ] States/regions dropdown in filter and apply form
 - [ ] Sponsor tiers in local currency
