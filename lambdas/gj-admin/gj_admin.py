@@ -361,9 +361,10 @@ def lambda_handler(event, context):
 
             # Send SNS notification
             sns = boto3.client('sns', region_name='us-east-1')
+            safe_sns_subject = f'New Article: {title}'.encode('ascii', 'ignore').decode('ascii')[:100]
             sns.publish(
                 TopicArn='arn:aws:sns:us-east-1:800712212925:goldenjackets-alerts',
-                Subject=trunc_subject(f'📝 New Article: {title}'),
+                Subject=safe_sns_subject,
                 Message=f'Author: {author}\nTitle: {title}\nURL: {url}\nSummary: {summary}\n\nPR created on GitHub.'
             )
 
