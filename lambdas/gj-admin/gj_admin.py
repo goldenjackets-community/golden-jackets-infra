@@ -290,7 +290,7 @@ def lambda_handler(event, context):
 
             def gh_api(method, path, data=None):
                 api_url = f'https://api.github.com/repos/{REPO}/{path}'
-                req_body = json.dumps(data).encode() if data else None
+                req_body = json.dumps(data, ensure_ascii=False).encode('utf-8') if data else None
                 req = urllib.request.Request(api_url, data=req_body, method=method, headers={'Authorization': f'token {GH_TOKEN}', 'Accept': 'application/vnd.github.v3+json'})
                 try:
                     resp = urllib.request.urlopen(req)
@@ -301,7 +301,7 @@ def lambda_handler(event, context):
                         return {'exists': True}
                     raise Exception(f'GitHub API Error {e.code}: {err_body[:200]}')
 
-            safe_title = title.lower().replace(' ', '-').replace(':', '').replace('/', '-')[:50]
+            safe_title = title.encode('ascii', 'ignore').decode('ascii').lower().replace(' ', '-').replace(':', '').replace('/', '-')[:50]
             branch = f'article-{safe_title}'
 
             # Get default branch SHA
@@ -349,7 +349,7 @@ def lambda_handler(event, context):
                 content = content.replace(marker, article_card + '        ' + marker)
                 put_payload = {
                     'message': f'Add article: {title}',
-                    'content': base64.b64encode(content.encode()).decode(),
+                    'content': base64.b64encode(content.encode('utf-8')).decode('ascii'),
                     'branch': branch,
                     'sha': file_sha
                 }
