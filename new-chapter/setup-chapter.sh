@@ -242,9 +242,20 @@ echo "=== 12/14: Create Repo + Site ==="
 gh repo create "${REPO_ORG}/${REPO_NAME}" --public \
   --description "Golden Jackets ${COUNTRY} ${FLAG} — Community of AWS professionals with all 12 certifications" 2>/dev/null || true
 
-# Clone Chile as base
+# Generate site from template
 TMPDIR=$(mktemp -d)
-gh repo clone ${REPO_ORG}/golden-jackets-chile "${TMPDIR}/site" -- --depth 1 2>/dev/null
+cp template/index.html "${TMPDIR}/site/index.html"
+mkdir -p "${TMPDIR}/site"
+sed -i "s|{{COUNTRY}}|${COUNTRY}|g" "${TMPDIR}/site/index.html"
+sed -i "s|{{CODE}}|${CODE}|g" "${TMPDIR}/site/index.html"
+sed -i "s|{{DOMAIN}}|${DOMAIN}|g" "${TMPDIR}/site/index.html"
+sed -i "s|{{FLAG}}|${FLAG}|g" "${TMPDIR}/site/index.html"
+sed -i "s|{{LEADER_NAME}}|${LEADER_NAME}|g" "${TMPDIR}/site/index.html"
+sed -i "s|{{LEADER_STATE}}|${LEADER_STATE}|g" "${TMPDIR}/site/index.html"
+sed -i "s|{{LEADER_PHOTO}}|${LEADER_PHOTO}|g" "${TMPDIR}/site/index.html"
+sed -i "s|{{LEADER_LINKEDIN}}|${LEADER_LINKEDIN}|g" "${TMPDIR}/site/index.html"
+sed -i "s|{{LEADER_REGION}}|${LEADER_REGION}|g" "${TMPDIR}/site/index.html"
+sed -i "s|{{COUNTER_URL}}|${COUNTER_FURL}|g" "${TMPDIR}/site/index.html"
 cd "${TMPDIR}/site"
 rm -rf .git BACKLOG.md
 git init && git checkout -b ${BRANCH}
