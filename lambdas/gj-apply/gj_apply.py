@@ -5,6 +5,8 @@ import os
 
 GITHUB_TOKEN = os.environ.get('GH_TOKEN', '')
 REPO_MAP = {
+    'goldenjackets.co.il': 'goldenjackets-community/golden-jackets-israel',
+    'www.goldenjackets.co.il': 'goldenjackets-community/golden-jackets-israel',
     'goldenjackets.us': 'goldenjackets-community/golden-jackets-usa',
     'www.goldenjackets.us': 'goldenjackets-community/golden-jackets-usa',
     'goldenjackets.fr': 'goldenjackets-community/golden-jackets-france',
