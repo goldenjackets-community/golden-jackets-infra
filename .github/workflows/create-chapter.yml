@@ -285,6 +285,40 @@ jobs:
           git push -u origin ${BRANCH}
           echo "✅ Site repo created and pushed"
 
+      - name: "9.5 Upload images from queue"
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          python3 -c "
+          import boto3, json, urllib.request, os
+          ddb = boto3.resource('dynamodb', region_name='us-east-1')
+          table = ddb.Table('gj-chapter-uploads')
+          code = os.environ['CODE']
+          repo = f'goldenjackets-community/golden-jackets-{code}'
+          token = os.environ['GH_TOKEN']
+          branch = os.environ.get('BRANCH', 'master')
+          try:
+              resp = table.get_item(Key={'id': f'chapter-{code}'})
+              item = resp.get('Item')
+              if not item: print('No uploads queued'); exit(0)
+              for upload in item.get('uploads', []):
+                  for utype, data in upload.items():
+                      path = data['path']
+                      content = data['content']
+                      body = json.dumps({'message': f'add {path}', 'branch': branch, 'content': content}).encode()
+                      req = urllib.request.Request(
+                          f'https://api.github.com/repos/{repo}/contents/{path}',
+                          data=body, method='PUT',
+                          headers={'Authorization': f'token {token}', 'Content-Type': 'application/json', 'Accept': 'application/vnd.github.v3+json', 'User-Agent': 'gj-bot'})
+                      urllib.request.urlopen(req)
+                      print(f'✅ Uploaded {path}')
+              table.delete_item(Key={'id': f'chapter-{code}'})
+              print('✅ Queue cleared')
+          except Exception as e:
+              print(f'⚠️ Upload failed: {e}')
+          "
+
       - name: "10. GitHub Secrets"
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
