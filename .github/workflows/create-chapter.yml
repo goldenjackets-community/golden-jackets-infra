@@ -163,14 +163,21 @@ jobs:
           LAMBDA
           sed -i "s/TABLENAME/${COUNTER_TABLE}/" /tmp/counter.py
           cd /tmp && zip -j counter.zip counter.py > /dev/null
-          aws lambda create-function --function-name "${COUNTER_FUNCTION}" 2>/dev/null; aws lambda get-function --function-name "${COUNTER_FUNCTION}" --runtime python3.12 \
-            --handler "counter.lambda_handler" --zip-file "fileb:///tmp/counter.zip" \
-            --role "arn:aws:iam::${ACCOUNT}:role/gj-apply-lambda" --timeout 10 > /dev/null
-          FUNC_URL=$(aws lambda create-function-url-config --function-name "${COUNTER_FUNCTION}" 2>/dev/null || aws lambda get-function-url-config --function-name "${COUNTER_FUNCTION}" \
-            --auth-type NONE --cors '{"AllowOrigins":["*"]}' --query 'FunctionUrl' --output text)
-          aws lambda add-permission --function-name "${COUNTER_FUNCTION}" 2>/dev/null || true \
+          aws lambda create-function --function-name "${COUNTER_FUNCTION}" \
+            --runtime python3.12 --handler "counter.lambda_handler" \
+            --zip-file "fileb:///tmp/counter.zip" \
+            --role "arn:aws:iam::${ACCOUNT}:role/gj-apply-lambda" \
+            --timeout 10 > /dev/null 2>&1 || \
+          aws lambda update-function-code --function-name "${COUNTER_FUNCTION}" \
+            --zip-file "fileb:///tmp/counter.zip" > /dev/null
+          FUNC_URL=$(aws lambda create-function-url-config --function-name "${COUNTER_FUNCTION}" \
+            --auth-type NONE --cors '{"AllowOrigins":["*"],"AllowMethods":["*"]}' \
+            --query 'FunctionUrl' --output text 2>/dev/null || \
+          aws lambda get-function-url-config --function-name "${COUNTER_FUNCTION}" \
+            --query 'FunctionUrl' --output text)
+          aws lambda add-permission --function-name "${COUNTER_FUNCTION}" \
             --statement-id FunctionURLAllowPublicAccess --action lambda:InvokeFunctionUrl \
-            --principal "*" --function-url-auth-type NONE > /dev/null
+            --principal "*" --function-url-auth-type NONE > /dev/null 2>&1 || true
           echo "FUNC_URL=${FUNC_URL}" >> $GITHUB_ENV
           echo "✅ DynamoDB + Lambda: ${FUNC_URL}"
 
@@ -178,8 +185,8 @@ jobs:
         continue-on-error: true
         run: |
           aws backup create-backup-vault --backup-vault-name "${BACKUP_VAULT}" 2>/dev/null || true
-          aws cognito-idp create-group --group-name "${CODE}" --user-pool-id "${POOL_ID}" 2>/dev/null || true \
-            --description "Golden Jackets ${COUNTRY}" > /dev/null
+          aws cognito-idp create-group --group-name "${CODE}" --user-pool-id "${POOL_ID}" \
+            --description "Golden Jackets ${COUNTRY}" > /dev/null 2>&1 || true
           aws cognito-idp admin-create-user --user-pool-id "${POOL_ID}" --username "${LEADER_EMAIL}" \
             --user-attributes Name=email,Value="${LEADER_EMAIL}" Name=email_verified,Value=true \
             --desired-delivery-mediums EMAIL > /dev/null 2>&1 || true
