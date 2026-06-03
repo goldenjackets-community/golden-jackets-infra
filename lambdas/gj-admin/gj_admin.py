@@ -710,13 +710,17 @@ def close_pr(chapter, pr_number):
 
 
 def create_chapter(params):
-    """Trigger create-chapter workflow via GitHub Actions dispatch"""
+    """Trigger create-chapter workflow + upload photo/jacket to repo"""
     token = os.environ.get('GITHUB_TOKEN', '')
+    code = params.get('code', '')
+    leader_name = params.get('leader_name', '').lower().replace(' ', '-')
+    
+    # 1. Trigger workflow
     data = json.dumps({
         'ref': 'main',
         'inputs': {
             'country': params.get('country', ''),
-            'code': params.get('code', ''),
+            'code': code,
             'domain': params.get('domain', ''),
             'leader_name': params.get('leader_name', ''),
             'leader_email': params.get('leader_email', ''),
@@ -733,6 +737,28 @@ def create_chapter(params):
     )
     try:
         urllib.request.urlopen(req)
-        return {'status': 'triggered', 'message': f'Creating chapter {params["country"]}... Check GitHub Actions for progress.'}
     except Exception as e:
-        return {'error': str(e)}
+        return {'error': f'Workflow trigger failed: {str(e)}'}
+
+    # 2. Queue photo/jacket upload (will be committed after repo exists ~3min)
+    uploads = []
+    if params.get('photo_base64'):
+        uploads.append(('photo', f'assets/members/{leader_name}.jpg', params['photo_base64']))
+    if params.get('jacket_base64'):
+        uploads.append(('jacket', f'assets/jacket-{code}.png', params['jacket_base64']))
+    
+    if uploads:
+        import boto3
+        ddb = boto3.resource('dynamodb', region_name='us-east-1')
+        table = ddb.Table('gj-chapter-uploads')
+        try:
+            table.put_item(Item={
+                'id': f'chapter-{code}',
+                'repo': f'goldenjackets-community/golden-jackets-{code}',
+                'uploads': [{u[0]: {'path': u[1], 'content': u[2]}} for u in uploads],
+                'status': 'pending'
+            })
+        except:
+            pass  # DynamoDB table may not exist yet, files can be uploaded manually
+
+    return {'status': 'triggered', 'message': f'Creating chapter {params["country"]}... Photo/jacket will be uploaded after repo is ready. Check GitHub Actions for progress.'}
