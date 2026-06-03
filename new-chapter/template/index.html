@@ -150,7 +150,7 @@
     .map-section { text-align: center; padding: 10px 20px 0; }
     .map-section h2 { font-size: 1.4em; color: var(--gold); margin-bottom: 8px; }
     .map-section .tip { font-size: 0.8em; color: var(--text-dimmer); margin-bottom: 5px; }
-    .map-container { margin: 0 auto; position: relative; overflow: visible; max-width: 700px; }
+    .map-container { margin: 0 auto; position: relative; overflow: visible; max-width: 500px; }
     .map-container svg { width: 100%; height: auto; }
     #{{CODE}}-map path { fill: var(--map-fill); stroke: var(--map-stroke); stroke-width: 0.8; transition: fill 0.3s, stroke 0.3s; }
     #{{CODE}}-map path.active { fill: var(--map-active); }
@@ -490,7 +490,7 @@
     <div class="map-container">
       <!-- Connection lines between pins -->
       <!-- MAP: Replace with country-specific SVG (external file or inline) -->
-      <img src="assets/{{CODE}}-map-regions.svg" alt="{{COUNTRY}} Map" style="max-width:700px;width:100%;height:auto;margin:0 auto;display:block;">
+      <img src="assets/{{CODE}}-map-regions.svg" alt="{{COUNTRY}} Map" style="max-width:500px;width:100%;height:auto;margin:0 auto;display:block;">
 
       <div class="map-pin" style="top:27%;left:51%" onclick="filterByState('{{LEADER_STATE}}')"><span class="pin-icon">📍</span><span class="pin-count gold-count">1</span></div>
     </div>
@@ -502,7 +502,7 @@
     <h2 style="font-size:1.6em;color:var(--gold);margin-bottom:8px;text-align:center;">🏆 Golden Jackets</h2>
     <p style="color:var(--text-muted);font-size:0.9em;margin-bottom:20px;text-align:center;">Professionals who earned all 12 AWS certifications</p>
     <div class="filter-bar">
-      <label>Filter by Region:</label>
+      <label>Filter by State:</label>
       <select id="stateFilter" onchange="filterMembers()">
         <option value="">All Regions</option>
         {{REGIONS_OPTIONS}}
