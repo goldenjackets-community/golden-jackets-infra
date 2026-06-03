@@ -185,7 +185,7 @@ def lambda_handler(event, context):
 
         # Verify caller has access to requested chapter
         # Skip chapter check for actions that don't need it
-        skip_chapter_actions = ['create-chapter', 'post-job', 'list-jobs', 'delete-job', 'apply-job', 'submit-article', 'suggest-topic']
+        skip_chapter_actions = ['create-chapter', 'chapter-status', 'post-job', 'list-jobs', 'delete-job', 'apply-job', 'submit-article', 'suggest-topic']
         if not is_global_admin and chapter not in caller_groups and action not in skip_chapter_actions:
             return {'statusCode': 403, 'headers': cors, 'body': json.dumps({'error': 'Access denied to this chapter'})}
 
@@ -535,6 +535,10 @@ def lambda_handler(event, context):
             return {'statusCode': 200, 'headers': cors, 'body': json.dumps(result)}
 
 
+        elif action == "chapter-status":
+            code = body.get("code", "")
+            result = get_chapter_status(code)
+            return {"statusCode": 200, "headers": cors, "body": json.dumps(result)}
         elif action == "create-chapter":
             caller = get_caller_email(event)
             if caller not in GLOBAL_ADMINS:
@@ -762,3 +766,15 @@ def create_chapter(params):
             pass  # DynamoDB table may not exist yet, files can be uploaded manually
 
     return {'status': 'triggered', 'message': f'Creating chapter {params["country"]}... Photo/jacket will be uploaded after repo is ready. Check GitHub Actions for progress.'}
+
+
+def get_chapter_status(code):
+    """Get chapter creation status from DynamoDB"""
+    import boto3
+    ddb = boto3.resource('dynamodb', region_name='us-east-1')
+    table = ddb.Table('gj-chapter-status')
+    try:
+        resp = table.get_item(Key={'code': code})
+        return resp.get('Item', {'status': 'in_progress'})
+    except:
+        return {'status': 'in_progress'}

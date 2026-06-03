@@ -301,6 +301,24 @@ jobs:
           git diff --cached --quiet || git commit -m "Add ${COUNTRY} to chapter mappings"
           git push
 
+
+      - name: "11.5 Save results to DynamoDB"
+        continue-on-error: true
+        run: |
+          aws dynamodb put-item --table-name gj-chapter-status --item "{
+            "code": {"S": "${CODE}"},
+            "status": {"S": "success"},
+            "cloudfront_id": {"S": "${{ env.CF_DIST_ID }}"},
+            "cloudfront_domain": {"S": "${{ env.CF_DOMAIN }}"},
+            "hosted_zone": {"S": "${{ env.HZ_ID }}"},
+            "counter_url": {"S": "${{ env.FUNC_URL }}"},
+            "domain": {"S": "${DOMAIN}"},
+            "country": {"S": "${COUNTRY}"},
+            "repo": {"S": "${REPO_ORG}/${REPO_NAME}"},
+            "nameservers": {"S": ""},
+            "timestamp": {"S": "2026-06-03T15:17:54Z"}
+          }"
+          echo "✅ Results saved to DynamoDB"
       - name: "12. Summary"
         run: |
           echo "## 🎉 Chapter Created: ${COUNTRY} ${FLAG}" >> $GITHUB_STEP_SUMMARY
