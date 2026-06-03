@@ -95,7 +95,26 @@ O script cria automaticamente:
 
 ---
 
-## Recursos por Chapter (referência)
+## Lições Aprendidas (Junho 2026)
+
+### Mapa do Chapter Site
+- **NÃO usar SimpleMaps** — viewBox achatado (1000x259), mapa fica minúsculo
+- **Usar SVG Wikimedia/Albers** — proporções reais, aspect ratio ~2:1
+- **Labels**: calcular centroide parseando coordenadas relativas (`m`, `l`, `c`) somando offsets
+- **CSS**: nunca colocar `height: auto` que sobrescreve o SVG. Usar `max-width: 700-910px` no container
+- **Alaska/Hawaii (USA)**: o SVG Wikimedia já inclui posicionados no canto — não precisa remover
+
+### Mapa Global (golden-jackets-global)
+- **Ativar um chapter**: trocar fill do path pra `#b8860b`, flight path pra `#FFD700`, pin de `planned` pra normal, card de `status-onboarding` pra `status-active`
+- **USA no world SVG**: Canadá e USA compartilham o mesmo path. O path laranja "In Negotiation" (com animation:blink) É o USA separado — ativar esse
+- **Países pequenos (Israel, Singapura)**: não têm path individual no world SVG. Usar apenas pin com radar
+- **Flight paths**: laranja `#FFA500` = onboarding, dourado `#FFD700` = active
+- **GitHub Pages**: demora 2-3 min pra propagar. Usar `?v=X` ou aba anônima pra testar
+
+### Deploy / GitHub Actions
+- **Secret `AWS_ACCOUNT_GJ`** precisa ser setado em cada repo novo (valor: `800712212925`)
+- **Secret `CLOUDFRONT_DIST_ID`** precisa ser setado por repo
+- Se Actions não roda, fazer deploy manual: `aws s3 cp index.html s3://BUCKET/ --content-type "text/html" --profile gj`
 
 | Chapter | Domínio | CloudFront | Hosted Zone | Backup Vault |
 |---------|---------|------------|-------------|--------------|
