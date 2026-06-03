@@ -233,6 +233,8 @@ jobs:
           # Clone Chile as base
           git clone --depth 1 "https://x-access-token:${GH_TOKEN}@github.com/${REPO_ORG}/golden-jackets-chile.git" site
           cd site && rm -rf .git BACKLOG.md
+          git config --global user.name "Golden Jackets Bot"
+          git config --global user.email "bot@goldenjacketsbrazil.com"
           git init && git checkout -b ${BRANCH}
           
           # Download map
