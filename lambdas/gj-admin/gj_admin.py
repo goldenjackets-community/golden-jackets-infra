@@ -185,7 +185,7 @@ def lambda_handler(event, context):
 
         # Verify caller has access to requested chapter
         # Skip chapter check for actions that don't need it
-        skip_chapter_actions = ['post-job', 'list-jobs', 'delete-job', 'apply-job', 'submit-article', 'suggest-topic']
+        skip_chapter_actions = ['create-chapter', 'post-job', 'list-jobs', 'delete-job', 'apply-job', 'submit-article', 'suggest-topic']
         if not is_global_admin and chapter not in caller_groups and action not in skip_chapter_actions:
             return {'statusCode': 403, 'headers': cors, 'body': json.dumps({'error': 'Access denied to this chapter'})}
 
@@ -535,6 +535,12 @@ def lambda_handler(event, context):
             return {'statusCode': 200, 'headers': cors, 'body': json.dumps(result)}
 
 
+        elif action == "create-chapter":
+            caller = get_caller_email(event)
+            if caller not in GLOBAL_ADMINS:
+                return {"statusCode": 403, "headers": cors, "body": json.dumps({"error": "Only global admins can create chapters"})}
+            result = create_chapter(body)
+            return {"statusCode": 200, "headers": cors, "body": json.dumps(result)}
         elif action == "suggest-topic":
             topic = body.get("topic", "")
             name = body.get("name", "")
@@ -701,3 +707,32 @@ def close_pr(chapter, pr_number):
     if not repo:
         return {'error': 'Invalid chapter'}
     return github_api('PATCH', f'/repos/goldenjackets-community/{repo}/pulls/{pr_number}', {'state': 'closed'})
+
+
+def create_chapter(params):
+    """Trigger create-chapter workflow via GitHub Actions dispatch"""
+    token = os.environ.get('GITHUB_TOKEN', '')
+    data = json.dumps({
+        'ref': 'main',
+        'inputs': {
+            'country': params.get('country', ''),
+            'code': params.get('code', ''),
+            'domain': params.get('domain', ''),
+            'leader_name': params.get('leader_name', ''),
+            'leader_email': params.get('leader_email', ''),
+            'leader_city': params.get('leader_city', ''),
+            'leader_linkedin': params.get('leader_linkedin', ''),
+            'flag': params.get('flag', ''),
+            'simplemaps_code': params.get('simplemaps_code', ''),
+        }
+    }).encode()
+    req = urllib.request.Request(
+        'https://api.github.com/repos/goldenjackets-community/golden-jackets-infra/actions/workflows/create-chapter.yml/dispatches',
+        data=data, method='POST',
+        headers={'Authorization': f'token {token}', 'Accept': 'application/vnd.github.v3+json', 'User-Agent': 'gj-admin'}
+    )
+    try:
+        urllib.request.urlopen(req)
+        return {'status': 'triggered', 'message': f'Creating chapter {params["country"]}... Check GitHub Actions for progress.'}
+    except Exception as e:
+        return {'error': str(e)}
