@@ -305,20 +305,21 @@ jobs:
       - name: "11.5 Save results to DynamoDB"
         continue-on-error: true
         run: |
-          aws dynamodb put-item --table-name gj-chapter-status --item "{
-            "code": {"S": "${CODE}"},
-            "status": {"S": "success"},
-            "cloudfront_id": {"S": "${{ env.CF_DIST_ID }}"},
-            "cloudfront_domain": {"S": "${{ env.CF_DOMAIN }}"},
-            "hosted_zone": {"S": "${{ env.HZ_ID }}"},
-            "counter_url": {"S": "${{ env.FUNC_URL }}"},
-            "domain": {"S": "${DOMAIN}"},
-            "country": {"S": "${COUNTRY}"},
-            "repo": {"S": "${REPO_ORG}/${REPO_NAME}"},
-            "nameservers": {"S": ""},
-            "timestamp": {"S": "2026-06-03T15:17:54Z"}
-          }"
-          echo "✅ Results saved to DynamoDB"
+          HZ=$(aws route53 list-hosted-zones --query "HostedZones[?Name=='${DOMAIN}.'].Id|[0]" --output text | sed 's|/hostedzone/||')
+          CF=$(aws cloudfront list-distributions --query "DistributionList.Items[?Comment=='Golden Jackets ${COUNTRY}']|[0].DomainName" --output text)
+          CFID=$(aws cloudfront list-distributions --query "DistributionList.Items[?Comment=='Golden Jackets ${COUNTRY}']|[0].Id" --output text)
+          FURL=$(aws lambda get-function-url-config --function-name ${COUNTER_FUNCTION} --query FunctionUrl --output text 2>/dev/null || echo "n/a")
+          NS=$(aws route53 get-hosted-zone --id $HZ --query 'DelegationSet.NameServers' --output text | tr '\t' ',')
+          python3 -c "
+          import boto3,datetime
+          boto3.resource('dynamodb',region_name='us-east-1').Table('gj-chapter-status').put_item(Item={
+            'code':'${CODE}','status':'success','cloudfront_id':'$CFID','cloudfront_domain':'$CF',
+            'hosted_zone':'$HZ','counter_url':'$FURL','domain':'${DOMAIN}','country':'${COUNTRY}',
+            'repo':'${REPO_ORG}/${REPO_NAME}','nameservers':'$NS',
+            'timestamp':datetime.datetime.utcnow().isoformat()+'Z'
+          })
+          print('✅ Results saved to DynamoDB')
+          "
       - name: "12. Summary"
         run: |
           echo "## 🎉 Chapter Created: ${COUNTRY} ${FLAG}" >> $GITHUB_STEP_SUMMARY
