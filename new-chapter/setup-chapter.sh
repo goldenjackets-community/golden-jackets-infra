@@ -261,6 +261,8 @@ if [ -s "assets/${CODE}-map-regions.svg" ]; then
   sed -i 's/stroke="[^"]*"/stroke="#555"/' assets/${CODE}-map-regions.svg
   sed -i 's/stroke-width="[^"]*"/stroke-width="0.5"/' assets/${CODE}-map-regions.svg
   # Add style block
+  # Add region labels automatically from circle coordinates
+  python3 "/home/gulias/golden-jackets-infra/new-chapter/add-map-labels.py" "assets/${CODE}-map-regions.svg"
   sed -i 's|<g id="features">|<style>\n  path { transition: fill 0.3s, stroke 0.3s; cursor: pointer; }\n  path:hover { fill: #3d3d6e; }\n  text { font-family: Arial, sans-serif; fill: #888; font-weight: 400; text-anchor: middle; pointer-events: none; stroke: none; }\n</style>\n<g id="features">|' assets/${CODE}-map-regions.svg
   sed -i "s|<svg |<svg id=\"${CODE}-map\" |" assets/${CODE}-map-regions.svg
 fi
