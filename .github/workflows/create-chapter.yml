@@ -282,7 +282,7 @@ jobs:
           
           git add -A && git commit -m "Initial ${COUNTRY} site"
           git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${REPO_ORG}/${REPO_NAME}.git"
-          git push -u origin ${BRANCH}
+          git push -u origin ${BRANCH} --force
           echo "✅ Site repo created and pushed"
 
       - name: "9.5 Upload images from queue"
