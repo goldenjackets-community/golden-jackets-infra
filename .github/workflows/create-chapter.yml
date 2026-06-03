@@ -42,6 +42,7 @@ permissions:
 jobs:
   create-chapter:
     runs-on: ubuntu-latest
+    continue-on-error: false
     env:
       COUNTRY: ${{ github.event.inputs.country }}
       CODE: ${{ github.event.inputs.code }}
@@ -105,7 +106,7 @@ jobs:
 
       - name: "3. S3 Bucket"
         run: |
-          aws s3 mb "s3://${BUCKET}"
+          aws s3 mb "s3://${BUCKET}" 2>/dev/null || true
           aws s3api put-public-access-block --bucket "${BUCKET}" \
             --public-access-block-configuration "BlockPublicAcls=false,IgnorePublicAcls=false,BlockPublicPolicy=false,RestrictPublicBuckets=false"
           aws s3 website "s3://${BUCKET}" --index-document index.html --error-document index.html
@@ -171,8 +172,8 @@ jobs:
 
       - name: "6. Backup Vault + Cognito"
         run: |
-          aws backup create-backup-vault --backup-vault-name "${BACKUP_VAULT}" > /dev/null
-          aws cognito-idp create-group --group-name "${CODE}" --user-pool-id "${POOL_ID}" \
+          aws backup create-backup-vault --backup-vault-name "${BACKUP_VAULT}" 2>/dev/null || true
+          aws cognito-idp create-group --group-name "${CODE}" --user-pool-id "${POOL_ID}" 2>/dev/null || true \
             --description "Golden Jackets ${COUNTRY}" > /dev/null
           aws cognito-idp admin-create-user --user-pool-id "${POOL_ID}" --username "${LEADER_EMAIL}" \
             --user-attributes Name=email,Value="${LEADER_EMAIL}" Name=email_verified,Value=true \
