@@ -10,13 +10,14 @@ This guide covers everything you need to manage your Golden Jackets chapter site
 
 1. [How the Site Works](#1-how-the-site-works)
 2. [How to Edit Files](#2-how-to-edit-files)
-3. [Adding a New Member](#3-adding-a-new-member)
-4. [Adding an Event](#4-adding-an-event)
-5. [Adding an Article/Talk](#5-adding-an-articletalk)
-6. [Translating Content](#6-translating-content)
-7. [Managing Lounge Users (Admin Panel)](#7-managing-lounge-users)
-8. [DO NOT TOUCH — Protected Files](#8-do-not-touch)
-9. [Troubleshooting](#9-troubleshooting)
+3. [Approving Applications](#3-approving-applications-most-common-task)
+4. [Adding a New Member (Manual)](#4-adding-a-new-member-manual-method)
+5. [Adding an Event](#5-adding-an-event)
+6. [Adding an Article/Talk](#6-adding-an-articletalk)
+7. [Translating Content](#7-translating-content)
+8. [Admin Panel — All Tools](#8-admin-panel--all-tools)
+9. [DO NOT TOUCH — Protected Files](#9-do-not-touch--protected-files-)
+10. [Troubleshooting](#10-troubleshooting)
 
 ---
 
@@ -63,7 +64,44 @@ git push origin master
 
 ---
 
-## 3. Adding a New Member
+## 3. Approving Applications (Most Common Task!)
+
+When someone applies via your chapter site, a Pull Request is created automatically. You approve it from the Admin panel — no coding needed.
+
+### How it works
+
+```
+Person fills form on your site
+        ↓
+Lambda creates PR with their card + photo
+        ↓
+You get an email notification
+        ↓
+You approve in Admin panel
+        ↓
+Site deploys automatically with new member
+```
+
+### Steps to Approve
+
+1. Go to your Admin panel (⚙️ button after login)
+2. Click **"Pending Members"**
+3. You'll see applications with name, city, LinkedIn, photo
+4. Click **"Approve & Merge"** to accept
+5. Click **"Reject"** to decline (with optional reason)
+6. Site auto-deploys in ~1 minute after approval
+
+### Tips
+- You have **full autonomy** — approve or reject based on your judgment
+- Golden Jacket = all 12 certs active, Alumni = some expired, Challenger = 10-11 certs
+- If you see "Pending Articles" — those are blog post submissions from members (same flow: approve/reject)
+- If a PR has conflicts, click Approve anyway — the system auto-rebuilds it
+
+---
+
+## 4. Adding a New Member (Manual Method)
+
+> ⚠️ **You usually don't need this!** Members apply via the form and you approve via Admin panel. This section is only for cases where you need to add someone manually.
 
 ### Step 1: Add their card to `index.html`
 
@@ -108,7 +146,7 @@ Go to your Admin panel → **Create User** → enter their email.
 
 ---
 
-## 4. Adding an Event
+## 5. Adding an Event
 
 Find the `Upcoming Events` section in `index.html`. Copy this template:
 
@@ -124,7 +162,7 @@ Find the `Upcoming Events` section in `index.html`. Copy this template:
 
 ---
 
-## 5. Adding an Article/Talk
+## 6. Adding an Article/Talk
 
 Find the `Articles & Talks` section. Copy this template:
 
@@ -141,7 +179,7 @@ Find the `Articles & Talks` section. Copy this template:
 
 ---
 
-## 6. Translating Content
+## 7. Translating Content
 
 The site has a translation system. When the user clicks the flag icon, text switches between English and your local language.
 
@@ -169,7 +207,7 @@ Add a new line inside the translations object:
 
 ---
 
-## 7. Admin Panel — All Tools
+## 8. Admin Panel — All Tools
 
 ### Access the Admin Panel
 
@@ -226,13 +264,21 @@ Displays site visitor metrics (total visits, unique visitors). Data comes from t
 
 Promotes a Challenger (11/12 certs) to Golden Jacket status. Enter their email — this updates their role in the system.
 
+### 🔀 Move Member
+
+Moves a member between categories (Golden Jacket ↔ Alumni ↔ Challenger). Use when a member's certification status changes.
+
+### 📷 Change Photo
+
+Updates a member's photo. Select the member from the dropdown, upload the new photo, and it gets pushed to the repo automatically.
+
 ### 📋 Backlog
 
 Shows the project backlog (from `BACKLOG.md` in your repo). Use this to track what's done and what's pending for your chapter.
 
 ---
 
-## 8. DO NOT TOUCH — Protected Files ⚠️
+## 9. DO NOT TOUCH — Protected Files ⚠️
 
 These files control infrastructure and authentication. **Do not edit them:**
 
@@ -252,7 +298,7 @@ These files control infrastructure and authentication. **Do not edit them:**
 
 ---
 
-## 9. Troubleshooting
+## 10. Troubleshooting
 
 ### Site not updating after commit
 
