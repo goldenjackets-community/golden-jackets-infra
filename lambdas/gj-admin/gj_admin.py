@@ -69,7 +69,7 @@ def list_prs(chapter):
     if isinstance(result, list):
         prs = []
         for pr in result:
-            item = {'number': pr['number'], 'title': pr['title'], 'author': pr['user']['login'], 'created_at': pr['created_at'], 'body': pr.get('body', ''), 'type': 'member' if 'New Member' in pr['title'] or 'Add member' in pr['title'] else 'article'}
+            item = {'number': pr['number'], 'title': pr['title'], 'author': pr['user']['login'], 'created_at': pr['created_at'], 'body': pr.get('body', ''), 'type': 'member' if 'New Member' in pr['title'] or 'Add member' in pr['title'] or 'Challenger' in pr['title'] else 'article'}
             prs.append(item)
         return prs
     return []
@@ -681,7 +681,7 @@ def list_prs(chapter):
                 'author': pr['user']['login'],
                 'created_at': pr['created_at'],
                 'body': pr.get('body', ''),
-                'type': 'member' if 'New Member' in pr['title'] or 'Add member' in pr['title'] else 'article'
+                'type': 'member' if 'New Member' in pr['title'] or 'Add member' in pr['title'] or 'Challenger' in pr['title'] else 'article'
             })
         return prs
     return []
