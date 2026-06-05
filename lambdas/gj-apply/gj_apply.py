@@ -124,11 +124,20 @@ def lambda_handler(event, context):
         city = body['city']
         state = body['state']
 
-        # Auto-append country to city based on region
-        country_map = {'SC': 'Scotland', 'SCT': 'Scotland', 'WA': 'Wales', 'WAL': 'Wales', 'NI': 'Northern Ireland', 'NIR': 'Northern Ireland'}
-        nation = country_map.get(state, 'England')
-        if 'United Kingdom' not in city:
-            city = f'{city}, {nation}, United Kingdom'
+        # Auto-append country to city based on chapter origin
+        COUNTRY_APPEND = {
+            'goldenjackets-community/golden-jackets-uk': lambda s, c: f"{c}, {'Scotland' if s in ('SC','SCT') else 'Wales' if s in ('WA','WAL') else 'Northern Ireland' if s in ('NI','NIR') else 'England'}, United Kingdom" if 'United Kingdom' not in c else c,
+            'goldenjackets-community/golden-jackets-brazil': lambda s, c: f"{c}, Brazil" if 'Brazil' not in c and 'Brasil' not in c else c,
+            'goldenjackets-community/golden-jackets-chile': lambda s, c: f"{c}, Chile" if 'Chile' not in c else c,
+            'goldenjackets-community/golden-jackets-india': lambda s, c: f"{c}, India" if 'India' not in c else c,
+            'goldenjackets-community/golden-jackets-france': lambda s, c: f"{c}, France" if 'France' not in c else c,
+            'goldenjackets-community/golden-jackets-italy': lambda s, c: f"{c}, Italy" if 'Italy' not in c and 'Italia' not in c else c,
+            'goldenjackets-community/golden-jackets-usa': lambda s, c: f"{c}, USA" if 'USA' not in c and 'United States' not in c else c,
+            'goldenjackets-community/golden-jackets-poland': lambda s, c: f"{c}, Poland" if 'Poland' not in c and 'Polska' not in c else c,
+            'goldenjackets-community/golden-jackets-peru': lambda s, c: f"{c}, Peru" if 'Peru' not in c else c,
+        }
+        if REPO in COUNTRY_APPEND:
+            city = COUNTRY_APPEND[REPO](state, city)
         date = body.get('date', '')
         linkedin = body['linkedin']
         email = body.get('email', '')
