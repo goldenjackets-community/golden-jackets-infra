@@ -237,41 +237,55 @@ jobs:
           gh repo create "${REPO_ORG}/${REPO_NAME}" --public \
             --description "Golden Jackets ${COUNTRY} ${FLAG}" 2>/dev/null || true
           
-          # Clone Chile as base
-          git clone --depth 1 "https://x-access-token:${GH_TOKEN}@github.com/${REPO_ORG}/golden-jackets-chile.git" site
-          cd site && rm -rf .git BACKLOG.md
+          SAFE_NAME=$(echo "${LEADER_NAME}" | tr '[:upper:]' '[:lower:]' | sed 's/ /-/g' | sed 's/[^a-z0-9-]//g')
+          TEMPLATE_DIR="${{ github.workspace }}/new-chapter/template"
+          
+          mkdir -p site/assets/members site/assets/badges site/.github/workflows
+          cd site
           git config --global user.name "Golden Jackets Bot"
           git config --global user.email "bot@goldenjacketsbrazil.com"
           git init && git checkout -b ${BRANCH}
           
-          # Download map
+          # Generate index.html from neutral template
+          sed \
+            -e "s|{{COUNTRY}}|${COUNTRY}|g" \
+            -e "s|{{CODE}}|${CODE}|g" \
+            -e "s|{{DOMAIN}}|${DOMAIN}|g" \
+            -e "s|{{FLAG}}|${FLAG}|g" \
+            -e "s|{{LEADER_NAME}}|${LEADER_NAME}|g" \
+            -e "s|{{LEADER_CITY}}|${LEADER_CITY}|g" \
+            -e "s|{{LEADER_STATE}}||g" \
+            -e "s|{{LEADER_PHOTO}}|${SAFE_NAME}.jpg|g" \
+            -e "s|{{LEADER_LINKEDIN}}|${LEADER_LINKEDIN}|g" \
+            -e "s|{{COUNTER_URL}}|${{ env.FUNC_URL }}|g" \
+            -e "s|{{SPONSOR_FOUNDING}}|5,000|g" \
+            -e "s|{{SPONSOR_GOLD}}|3,000|g" \
+            -e "s|{{SPONSOR_SILVER}}|1,500|g" \
+            -e "s|{{SPONSOR_BRONZE}}|750|g" \
+            -e "s|{{REGIONS_OPTIONS}}||g" \
+            "${TEMPLATE_DIR}/index.html" > index.html
+          
+          # Download map from SimpleMaps
           curl -sL "https://simplemaps.com/static/svg/country/${SIMPLEMAPS_CODE}/admin1/${SIMPLEMAPS_CODE}.svg" -o "assets/${CODE}-map-regions.svg" || true
           
-          # Customize SVG
+          # Style the map SVG
           if [ -s "assets/${CODE}-map-regions.svg" ]; then
             sed -i 's/fill="[^"]*"/fill="#2d2d4e"/' "assets/${CODE}-map-regions.svg"
             sed -i 's/stroke="[^"]*"/stroke="#555"/' "assets/${CODE}-map-regions.svg"
             sed -i 's/stroke-width="[^"]*"/stroke-width="0.5"/' "assets/${CODE}-map-regions.svg"
-            sed -i 's|<g id="features">|<style>\n  path { transition: fill 0.3s; cursor: pointer; }\n  path:hover { fill: #3d3d6e; }\n  text { font-family: Arial, sans-serif; fill: #888; font-weight: 400; text-anchor: middle; pointer-events: none; stroke: none; }\n</style>\n<g id="features">|' "assets/${CODE}-map-regions.svg"
-            python3 ${{ github.workspace }}/new-chapter/add-map-labels.py "assets/${CODE}-map-regions.svg"
+            sed -i 's|<g id="features">|<style>
+  path { transition: fill 0.3s; cursor: pointer; }
+  path:hover { fill: #3d3d6e; }
+  text { font-family: Arial, sans-serif; fill: #888; font-weight: 400; text-anchor: middle; pointer-events: none; stroke: none; }
+</style>
+<g id="features">|' "assets/${CODE}-map-regions.svg"
+            python3 ${{ github.workspace }}/new-chapter/add-map-labels.py "assets/${CODE}-map-regions.svg" 2>/dev/null || true
           fi
           
-          rm -f assets/chile-map-regions.svg assets/jacket-chile.png assets/members/*.jpg
+          # Copy static assets from template/shared
+          cp ${{ github.workspace }}/new-chapter/template/assets/* assets/ 2>/dev/null || true
           
-          # Bulk replace
-          find . \( -name "*.html" -o -name "*.js" -o -name "*.xml" -o -name "*.txt" \) -exec sed -i \
-            -e "s/Golden Jackets Chile/Golden Jackets ${COUNTRY}/g" \
-            -e "s/goldenjackets\.cl/${DOMAIN}/g" \
-            -e "s/Chile/${COUNTRY}/g" -e "s/chile/${CODE}/g" \
-            -e "s/🇨🇱/${FLAG}/g" \
-            -e "s|jacket-chile.png|jacket-${CODE}.png|g" \
-            -e "s|chile-map-regions.svg|${CODE}-map-regions.svg|g" {} \;
-          
-          sed -i 's|max-width:120px|max-width:700px;width:100%|g' index.html
-          sed -i "s|s3://goldenjackets.[a-z]*/|s3://${BUCKET}/|g" .github/workflows/deploy.yml
-          sed -i "s|d245cwyl4dcv9y.cloudfront.net|${{ env.CF_DOMAIN }}|g" .github/workflows/deploy.yml
-          sed -i "s|\"chapter\":\"[a-z]*\"|\"chapter\":\"${CODE}\"|g" .github/workflows/deploy.yml
-          
+          # config.js
           cat > config.js << CONF
           var GJ_CONFIG = {
             ADMIN_API: 'https://kqiq2bltjd.execute-api.us-east-1.amazonaws.com/admin',
@@ -280,19 +294,63 @@ jobs:
           };
           CONF
           
-          sed -i "s|https://[a-z0-9]*\.lambda-url\.us-east-1\.on\.aws/|${{ env.FUNC_URL }}|g" index.html
-          sed -i "s|Oscar Alexander Gaviria González|${LEADER_NAME}|g" index.html
-          sed -i "s|Oscar Gaviria|${LEADER_NAME}|g" index.html
-          SAFE_NAME=$(echo "${LEADER_NAME}" | tr "[:upper:]" "[:lower:]" | sed "s/ /-/g" | sed "s/[^a-z0-9-]//g")
-          sed -i "s|oscar-gaviria\.jpg|${SAFE_NAME}.jpg|g" index.html
-          sed -i "s|https://www.linkedin.com/in/oscar-alexander-gaviria-gonzelez-11286883/|${LEADER_LINKEDIN}|g" index.html
+          # deploy.yml
+          cat > .github/workflows/deploy.yml << 'DEPLOY'
+          name: Deploy to S3
+          on:
+            push:
+              branches: [master, main]
+          permissions:
+            id-token: write
+            contents: read
+          jobs:
+            deploy:
+              runs-on: ubuntu-latest
+              steps:
+                - uses: actions/checkout@v4
+                - uses: aws-actions/configure-aws-credentials@v4
+                  with:
+                    role-to-assume: arn:aws:iam::800712212925:role/github-actions-deploy
+                    aws-region: us-east-1
+                - name: Sync to S3
+                  run: |
+                    aws s3 sync . s3://BUCKET_PLACEHOLDER/ \
+                      --exclude ".git/*" --exclude ".github/*" --exclude ".gitignore" --exclude "README.md"
+                - name: Invalidate CloudFront
+                  run: |
+                    aws cloudfront create-invalidation \
+                      --distribution-id ${{ secrets.CLOUDFRONT_DIST_ID }} --paths "/*"
+          DEPLOY
+          sed -i "s|BUCKET_PLACEHOLDER|${DOMAIN}|g" .github/workflows/deploy.yml
           
-          printf "# Golden Jackets ${COUNTRY} ${FLAG}\n\nPush to \`${BRANCH}\` → auto-deploy.\n" > README.md
+          # Copy badges, privacy, members.html, admin.html from Brazil as base
+          for f in privacy.html members.html admin.html robots.txt sitemap.xml; do
+            curl -sL "https://raw.githubusercontent.com/${REPO_ORG}/golden-jackets-brazil/main/${f}" -o "${f}" 2>/dev/null || true
+          done
+          # Fix domain references in copied files
+          sed -i "s|goldenjacketsbrazil.com|${DOMAIN}|g" privacy.html sitemap.xml robots.txt 2>/dev/null || true
+          
+          # Copy badges
+          curl -sL "https://api.github.com/repos/${REPO_ORG}/golden-jackets-brazil/contents/assets/badges" \
+            -H "Authorization: token ${GH_TOKEN}" | python3 -c "
+          import json,sys,urllib.request
+          for f in json.load(sys.stdin):
+            urllib.request.urlretrieve(f['download_url'], f'assets/badges/{f[\"name\"]}')
+          " 2>/dev/null || true
+          
+          # Chapter Leader Guide
+          curl -sL "https://${DOMAIN}.s3.amazonaws.com/assets/chapter-leader-guide.pdf" -o "assets/chapter-leader-guide.pdf" 2>/dev/null || \
+            curl -sL "https://www.goldenjacketsbrazil.com/assets/chapter-leader-guide.pdf" -o "assets/chapter-leader-guide.pdf" 2>/dev/null || true
+          
+          printf "# Golden Jackets ${COUNTRY} ${FLAG}
+
+Push to \`${BRANCH}\` → auto-deploy.
+" > README.md
           
           git add -A && git commit -m "Initial ${COUNTRY} site"
           git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${REPO_ORG}/${REPO_NAME}.git"
           git push -u origin ${BRANCH} --force
-          echo "✅ Site repo created and pushed"
+          echo "✅ Site repo created from neutral template"
 
       - name: "9.5 Upload images from queue"
         continue-on-error: true
