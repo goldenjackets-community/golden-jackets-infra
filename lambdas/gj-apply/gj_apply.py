@@ -88,6 +88,20 @@ def build_card(name, city, state, date, linkedin, member_type, photo_path):
           <a href="{linkedin}" target="_blank">in</a>
         </div>
       </div>"""
+    elif member_type == 'alumni':
+        return f"""      <div class="member-card" data-state="{state}">
+        {photo_html}
+        <h3>{name}</h3>
+        <div class="location">{city}</div>
+        <div class="tags">
+          <span class="tag">Alumni</span>
+          <span class="tag">Member</span>
+        </div>
+        <div class="certified">Certified on {date}</div>
+        <div class="socials">
+          <a href="{linkedin}" target="_blank">in</a>
+        </div>
+      </div>"""
     else:
         certs = '11' if '11' in member_type else '10'
         away = '1' if certs == '11' else '2'
@@ -179,6 +193,8 @@ def lambda_handler(event, context):
                 marker = '<!-- END_GOLDEN_JACKETS -->'
                 if marker not in index_content:
                     marker = '\U0001f396\ufe0f Alumni'
+            elif member_type == 'alumni':
+                marker = '<!-- END_ALUMNI -->'
             else:
                 marker = '<!-- END_CHALLENGERS -->'
             
