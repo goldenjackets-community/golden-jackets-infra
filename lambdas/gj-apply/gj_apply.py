@@ -29,13 +29,14 @@ REPO_MAP = {
 
 SNS_TOPIC_MAP = {
     'goldenjackets-community/golden-jackets-brazil': 'arn:aws:sns:us-east-1:800712212925:goldenjackets-alerts',
-    'goldenjackets-community/golden-jackets-poland': 'arn:aws:sns:us-east-1:800712212925:goldenjackets-alerts',
+    'goldenjackets-community/golden-jackets-poland': 'arn:aws:sns:us-east-1:800712212925:gj-poland-alerts',
     'goldenjackets-community/golden-jackets-uk': 'arn:aws:sns:us-east-1:800712212925:gj-uk-alerts',
-    'goldenjackets-community/golden-jackets-chile': 'arn:aws:sns:us-east-1:800712212925:goldenjackets-alerts',
-    'goldenjackets-community/golden-jackets-france': 'arn:aws:sns:us-east-1:800712212925:goldenjackets-alerts',
-    'goldenjackets-community/golden-jackets-italy': 'arn:aws:sns:us-east-1:800712212925:goldenjackets-alerts',
-    'goldenjackets-community/golden-jackets-india': 'arn:aws:sns:us-east-1:800712212925:goldenjackets-alerts',
-    'goldenjackets-community/golden-jackets-peru': 'arn:aws:sns:us-east-1:800712212925:goldenjackets-alerts',
+    'goldenjackets-community/golden-jackets-chile': 'arn:aws:sns:us-east-1:800712212925:gj-chile-alerts',
+    'goldenjackets-community/golden-jackets-france': 'arn:aws:sns:us-east-1:800712212925:gj-france-alerts',
+    'goldenjackets-community/golden-jackets-italy': 'arn:aws:sns:us-east-1:800712212925:gj-italy-alerts',
+    'goldenjackets-community/golden-jackets-india': 'arn:aws:sns:us-east-1:800712212925:gj-india-alerts',
+    'goldenjackets-community/golden-jackets-usa': 'arn:aws:sns:us-east-1:800712212925:gj-usa-alerts',
+    'goldenjackets-community/golden-jackets-peru': 'arn:aws:sns:us-east-1:800712212925:gj-peru-alerts',
 }
 DEFAULT_REPO = os.environ.get('GITHUB_REPO', 'goldenjackets-community/golden-jackets-brazil')
 
