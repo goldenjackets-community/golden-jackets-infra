@@ -177,8 +177,14 @@ def lambda_handler(event, context):
             default_branch = 'master'
         sha = ref_data['object']['sha']
 
-        # Create branch
-        gh_api('POST', 'git/refs', {'ref': f'refs/heads/{branch}', 'sha': sha}, repo=REPO)
+        # Create branch (delete if already exists to avoid stale SHA issues)
+        result = gh_api('POST', 'git/refs', {'ref': f'refs/heads/{branch}', 'sha': sha}, repo=REPO)
+        if result.get('exists'):
+            try:
+                gh_api('DELETE', f'git/refs/heads/{branch}', repo=REPO)
+            except:
+                pass
+            gh_api('POST', 'git/refs', {'ref': f'refs/heads/{branch}', 'sha': sha}, repo=REPO)
 
         # Upload photo
         if photo_b64:
