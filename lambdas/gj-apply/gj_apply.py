@@ -163,7 +163,9 @@ def lambda_handler(event, context):
         consent = body.get('consentAccepted', False)
         consent_date = body.get('consentDate', '')
 
-        safe_name = name.lower().replace(' ', '-').replace('.', '').replace("'", '')
+        import unicodedata
+        safe_name = unicodedata.normalize('NFD', name.lower()).encode('ascii', 'ignore').decode('ascii')
+        safe_name = safe_name.replace(' ', '-').replace('.', '').replace("'", '')
         photo_ext = photo_name.split('.')[-1] if photo_name else 'jpg'
         photo_path = f'assets/members/{safe_name}.{photo_ext}'
         branch = f'add-member-{safe_name}'
