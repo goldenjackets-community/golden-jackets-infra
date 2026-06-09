@@ -61,7 +61,7 @@ def github_api(method, path, body=None):
         return {'error': str(e)}
 
 def list_prs(chapter):
-    repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk', 'chile': 'golden-jackets-chile'}
+    repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk', 'chile': 'golden-jackets-chile', 'india': 'golden-jackets-india', 'france': 'golden-jackets-france', 'usa': 'golden-jackets-usa', 'italy': 'golden-jackets-italy', 'ecuador': 'golden-jackets-ecuador'}
     repo = repo_map.get(chapter, '')
     if not repo:
         return []
@@ -80,7 +80,7 @@ def merge_pr(chapter, pr_number):
 
 
 def close_pr(chapter, pr_number):
-    repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk', 'chile': 'golden-jackets-chile'}
+    repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk', 'chile': 'golden-jackets-chile', 'india': 'golden-jackets-india', 'france': 'golden-jackets-france', 'usa': 'golden-jackets-usa', 'italy': 'golden-jackets-italy', 'ecuador': 'golden-jackets-ecuador'}
     repo = repo_map.get(chapter, '')
     if not repo:
         return {'error': 'Invalid chapter'}
@@ -90,7 +90,7 @@ def close_pr(chapter, pr_number):
 def rebuild_remaining_prs(chapter, merged_pr_number):
     """After merging a PR, rebuild ALL other open PRs to avoid conflicts."""
     import base64 as b64
-    repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk', 'chile': 'golden-jackets-chile'}
+    repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk', 'chile': 'golden-jackets-chile', 'india': 'golden-jackets-india', 'france': 'golden-jackets-france', 'usa': 'golden-jackets-usa', 'italy': 'golden-jackets-italy', 'ecuador': 'golden-jackets-ecuador'}
     repo = repo_map.get(chapter, '')
     if not repo:
         return
@@ -285,7 +285,7 @@ def lambda_handler(event, context):
             summary = body.get('summary', '')
             author = body.get('author', 'unknown')
             GH_TOKEN = os.environ.get('GITHUB_TOKEN', '')
-            article_repo_map = {'brazil': 'goldenjackets-community/golden-jackets-brazil', 'poland': 'goldenjackets-community/golden-jackets-poland', 'uk': 'goldenjackets-community/golden-jackets-uk', 'chile': 'goldenjackets-community/golden-jackets-chile'}
+            article_repo_map = {'brazil': 'goldenjackets-community/golden-jackets-brazil', 'poland': 'goldenjackets-community/golden-jackets-poland', 'uk': 'goldenjackets-community/golden-jackets-uk', 'chile': 'goldenjackets-community/golden-jackets-chile', 'india': 'goldenjackets-community/golden-jackets-india', 'france': 'goldenjackets-community/golden-jackets-france', 'usa': 'goldenjackets-community/golden-jackets-usa', 'italy': 'goldenjackets-community/golden-jackets-italy', 'ecuador': 'goldenjackets-community/golden-jackets-ecuador'}
             REPO = article_repo_map.get(chapter, 'goldenjackets-community/golden-jackets-brazil')
 
             def gh_api(method, path, data=None):
@@ -460,7 +460,7 @@ def lambda_handler(event, context):
             reason = body.get('reason', 'No reason provided')
             if not pr_number:
                 return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'pr_number required'})}
-            repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk', 'chile': 'golden-jackets-chile'}
+            repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk', 'chile': 'golden-jackets-chile', 'india': 'golden-jackets-india', 'france': 'golden-jackets-france', 'usa': 'golden-jackets-usa', 'italy': 'golden-jackets-italy', 'ecuador': 'golden-jackets-ecuador'}
             repo = repo_map.get(chapter, '')
             pr_info = github_api('GET', f'/repos/goldenjackets-community/{repo}/pulls/{pr_number}')
             pr_title = pr_info.get('title', f'PR #{pr_number}')
@@ -473,7 +473,7 @@ def lambda_handler(event, context):
 
         elif action == 'list-members':
             import base64 as b64, re
-            repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk', 'chile': 'golden-jackets-chile'}
+            repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk', 'chile': 'golden-jackets-chile', 'india': 'golden-jackets-india', 'france': 'golden-jackets-france', 'usa': 'golden-jackets-usa', 'italy': 'golden-jackets-italy', 'ecuador': 'golden-jackets-ecuador'}
             repo = repo_map.get(chapter, '')
             if not repo:
                 return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'Invalid chapter'})}
@@ -488,7 +488,7 @@ def lambda_handler(event, context):
             filename = body.get('filename', 'photo.jpg')
             if not name or not photo_b64:
                 return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'name and photo required'})}
-            repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk', 'chile': 'golden-jackets-chile'}
+            repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk', 'chile': 'golden-jackets-chile', 'india': 'golden-jackets-india', 'france': 'golden-jackets-france', 'usa': 'golden-jackets-usa', 'italy': 'golden-jackets-italy', 'ecuador': 'golden-jackets-ecuador'}
             repo = repo_map.get(chapter, '')
             if not repo:
                 return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'Invalid chapter'})}
@@ -582,7 +582,7 @@ def github_api(method, path, body=None):
 
 def move_member_card(chapter, member_name, target):
     import re, base64
-    repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk', 'chile': 'golden-jackets-chile'}
+    repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk', 'chile': 'golden-jackets-chile', 'india': 'golden-jackets-india', 'france': 'golden-jackets-france', 'usa': 'golden-jackets-usa', 'italy': 'golden-jackets-italy', 'ecuador': 'golden-jackets-ecuador'}
     repo = repo_map.get(chapter, '')
     if not repo:
         return {'error': 'Invalid chapter'}
@@ -667,7 +667,7 @@ def move_member_card(chapter, member_name, target):
         return {'error': f'Failed to update: {str(e)}'}
 
 def list_prs(chapter):
-    repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk', 'chile': 'golden-jackets-chile'}
+    repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk', 'chile': 'golden-jackets-chile', 'india': 'golden-jackets-india', 'france': 'golden-jackets-france', 'usa': 'golden-jackets-usa', 'italy': 'golden-jackets-italy', 'ecuador': 'golden-jackets-ecuador'}
     repo = repo_map.get(chapter, '')
     if not repo:
         return []
@@ -687,7 +687,7 @@ def list_prs(chapter):
     return []
 
 def merge_pr(chapter, pr_number):
-    repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk', 'chile': 'golden-jackets-chile'}
+    repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk', 'chile': 'golden-jackets-chile', 'india': 'golden-jackets-india', 'france': 'golden-jackets-france', 'usa': 'golden-jackets-usa', 'italy': 'golden-jackets-italy', 'ecuador': 'golden-jackets-ecuador'}
     repo = repo_map.get(chapter, '')
     if not repo:
         return {'error': 'Invalid chapter'}
@@ -706,7 +706,7 @@ def merge_pr(chapter, pr_number):
     return result
 
 def close_pr(chapter, pr_number):
-    repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk', 'chile': 'golden-jackets-chile'}
+    repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk', 'chile': 'golden-jackets-chile', 'india': 'golden-jackets-india', 'france': 'golden-jackets-france', 'usa': 'golden-jackets-usa', 'italy': 'golden-jackets-italy', 'ecuador': 'golden-jackets-ecuador'}
     repo = repo_map.get(chapter, '')
     if not repo:
         return {'error': 'Invalid chapter'}
