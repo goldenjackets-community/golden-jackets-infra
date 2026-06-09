@@ -200,14 +200,23 @@ def lambda_handler(event, context):
             if member_type == 'golden' or member_type == '':
                 marker = '<!-- END_GOLDEN_JACKETS -->'
                 if marker not in index_content:
-                    marker = '\U0001f396\ufe0f Alumni'
+                    marker = '<!-- END_MEMBERS_GRID -->'
+                if marker not in index_content:
+                    # Fallback: insert before Alumni section comment
+                    marker = '<!-- Alumni Section -->'
+                if marker not in index_content:
+                    # Last fallback: find closing of members-grid div before alumni h2
+                    import re
+                    m = re.search(r'(</div>\s*</section>\s*(?:<!--\s*Alumni))', index_content)
+                    if m:
+                        marker = m.group(1)
             elif member_type == 'alumni':
                 marker = '<!-- END_ALUMNI -->'
             else:
                 marker = '<!-- END_CHALLENGERS -->'
             
             if marker in index_content:
-                index_content = index_content.replace(marker, card + '\n' + marker)
+                index_content = index_content.replace(marker, card + '\n' + marker, 1)
                 put_file('index.html', index_content, f'Add member card: {name}', branch, index_sha, repo=REPO)
 
         # Create PR
