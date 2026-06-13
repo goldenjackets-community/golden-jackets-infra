@@ -71,12 +71,14 @@ def put_file(path, content, message, branch, sha=None, repo=None):
         payload['sha'] = sha
     return gh_api('PUT', f'contents/{path}', payload, repo=repo)
 
-def build_card(name, city, state, date, linkedin, member_type, photo_path):
+def build_card(name, city, state, date, linkedin, member_type, photo_path, card_number=None):
+    import re as _re
     initials = ''.join([w[0].upper() for w in name.split()[:2]])
     photo_html = f'<img src="{photo_path}" alt="{name}" class="photo">' if photo_path else f'<div class="avatar">{initials}</div>'
+    number_html = f'<span class="card-number">#{card_number}</span>\n        ' if card_number else ''
     if member_type == 'golden':
         return f"""      <div class="member-card" data-state="{state}">
-        {photo_html}
+        {number_html}{photo_html}
         <h3>{name}</h3>
         <div class="location">{city}</div>
         <div class="tags">
@@ -89,8 +91,8 @@ def build_card(name, city, state, date, linkedin, member_type, photo_path):
         </div>
       </div>"""
     elif member_type == 'alumni':
-        return f"""      <div class="member-card" data-state="{state}">
-        {photo_html}
+        return f"""      <div class="member-card alumni" data-state="{state}">
+        {number_html}{photo_html}
         <h3>{name}</h3>
         <div class="location">{city}</div>
         <div class="tags">
@@ -106,7 +108,7 @@ def build_card(name, city, state, date, linkedin, member_type, photo_path):
         certs = '11' if '11' in member_type else '10'
         away = '1' if certs == '11' else '2'
         return f"""      <div class="member-card challenger" data-state="{state}">
-        {photo_html}
+        {number_html}{photo_html}
         <h3>{name}</h3>
         <div class="location">{city}</div>
         <div class="tags">
@@ -196,28 +198,59 @@ def lambda_handler(event, context):
         # Get index.html and add card
         index_content, index_sha = get_file('index.html', branch, repo=REPO)
         if index_content:
-            card = build_card(name, city, state, date, linkedin, member_type, photo_path if photo_b64 else '')
+            import re
+
+            # Count existing cards to determine card number
             if member_type == 'golden' or member_type == '':
-                marker = '<!-- END_GOLDEN_JACKETS -->'
-                if marker not in index_content:
-                    marker = '<!-- END_MEMBERS_GRID -->'
-                if marker not in index_content:
-                    # Fallback: insert before Alumni section comment
-                    marker = '<!-- Alumni Section -->'
-                if marker not in index_content:
-                    # Last fallback: find closing of members-grid div before alumni h2
-                    import re
-                    m = re.search(r'(</div>\s*</section>\s*(?:<!--\s*Alumni))', index_content)
-                    if m:
-                        marker = m.group(1)
+                existing = len(re.findall(r'<div class="member-card[^"]*"[^>]*data-state', index_content.split('id="alumni"')[0] if 'id="alumni"' in index_content else index_content))
             elif member_type == 'alumni':
-                marker = '<!-- END_ALUMNI -->'
+                alumni_section = index_content.split('id="alumni"')[1].split('</section>')[0] if 'id="alumni"' in index_content else ''
+                existing = len(re.findall(r'<div class="member-card', alumni_section))
             else:
-                marker = '<!-- END_CHALLENGERS -->'
-            
-            if marker in index_content:
-                index_content = index_content.replace(marker, card + '\n' + marker, 1)
-                put_file('index.html', index_content, f'Add member card: {name}', branch, index_sha, repo=REPO)
+                chall_section = index_content.split('id="challengers"')[1].split('</section>')[0] if 'id="challengers"' in index_content else ''
+                existing = len(re.findall(r'<div class="member-card', chall_section))
+            card_number = existing + 1
+
+            card = build_card(name, city, state, date, linkedin, member_type, photo_path if photo_b64 else '', card_number)
+
+            if member_type == 'golden' or member_type == '':
+                # Insert before the closing </div> of members-grid (before </div>\n  </section> that ends #members)
+                # Find the </div>\n  </section> that comes after the members-grid
+                m = re.search(r'(    </div>\s*\n  </section>\s*\n(?:<!-- Alumni|<!-- Challengers))', index_content)
+                if m:
+                    index_content = index_content.replace(m.group(1), card + '\n' + m.group(1), 1)
+                else:
+                    # Fallback: look for closing pattern of members section
+                    m = re.search(r'(    </div>\s*\n  </section>\s*\n)', index_content)
+                    if m:
+                        index_content = index_content.replace(m.group(1), card + '\n' + m.group(1), 1)
+            elif member_type == 'alumni':
+                # Insert before closing of alumni section grid
+                m = re.search(r'(<!-- Alumni cards go here -->|<!-- END_ALUMNI -->)', index_content)
+                if m:
+                    index_content = index_content.replace(m.group(1), card + '\n      ' + m.group(1), 1)
+                else:
+                    # Find alumni section's closing </div>\n  </section>
+                    parts = index_content.split('id="alumni"')
+                    if len(parts) > 1:
+                        alumni_part = parts[1]
+                        m2 = re.search(r'(    </div>\s*\n  </section>)', alumni_part)
+                        if m2:
+                            index_content = index_content.replace('id="alumni"' + alumni_part[:m2.start()] + m2.group(1), 'id="alumni"' + alumni_part[:m2.start()] + card + '\n' + m2.group(1), 1)
+            else:
+                # Challengers
+                m = re.search(r'(<!-- Challenger cards go here -->|<!-- END_CHALLENGERS -->)', index_content)
+                if m:
+                    index_content = index_content.replace(m.group(1), card + '\n      ' + m.group(1), 1)
+                else:
+                    parts = index_content.split('id="challengers"')
+                    if len(parts) > 1:
+                        chall_part = parts[1]
+                        m2 = re.search(r'(    </div>\s*\n  </section>)', chall_part)
+                        if m2:
+                            index_content = index_content.replace('id="challengers"' + chall_part[:m2.start()] + m2.group(1), 'id="challengers"' + chall_part[:m2.start()] + card + '\n' + m2.group(1), 1)
+
+            put_file('index.html', index_content, f'Add member card: {name}', branch, index_sha, repo=REPO)
 
         # Create PR
         pr_body = f"""## New Member Application
