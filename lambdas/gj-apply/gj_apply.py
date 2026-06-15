@@ -214,14 +214,12 @@ def lambda_handler(event, context):
             card = build_card(name, city, state, date, linkedin, member_type, photo_path if photo_b64 else '', card_number)
 
             if member_type == 'golden' or member_type == '':
-                # Insert before the closing </div> of members-grid (before </div>\n  </section> that ends #members)
-                # Find the </div>\n  </section> that comes after the members-grid
-                m = re.search(r'(    </div>\s*\n  </section>\s*\n(?:<!-- Alumni|<!-- Challengers))', index_content)
-                if m:
-                    index_content = index_content.replace(m.group(1), card + '\n' + m.group(1), 1)
+                # Primary: use END_GOLDEN_JACKETS marker (exists in all chapter sites)
+                if '<!-- END_GOLDEN_JACKETS -->' in index_content:
+                    index_content = index_content.replace('<!-- END_GOLDEN_JACKETS -->', card + '\n<!-- END_GOLDEN_JACKETS -->', 1)
                 else:
-                    # Fallback: look for closing pattern of members section
-                    m = re.search(r'(    </div>\s*\n  </section>\s*\n)', index_content)
+                    # Fallback: find closing </div>\n</section> after members-grid
+                    m = re.search(r'(    </div>\s*\n  </section>\s*\n(?:<!-- Alumni|<!-- Challengers))', index_content)
                     if m:
                         index_content = index_content.replace(m.group(1), card + '\n' + m.group(1), 1)
             elif member_type == 'alumni':
