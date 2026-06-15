@@ -313,7 +313,11 @@ def lambda_handler(event, context):
                 default_branch = 'master'
             sha = ref_data['object']['sha']
 
-            # Create branch
+            # Create branch (delete stale one if exists)
+            try:
+                gh_api('DELETE', f'git/refs/heads/{branch}')
+            except:
+                pass
             gh_api('POST', 'git/refs', {'ref': f'refs/heads/{branch}', 'sha': sha})
 
             # Get index.html and add article
