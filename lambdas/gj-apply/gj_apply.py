@@ -190,9 +190,15 @@ def lambda_handler(event, context):
                 pass
             gh_api('POST', 'git/refs', {'ref': f'refs/heads/{branch}', 'sha': sha}, repo=REPO)
 
-        # Upload photo
+        # Upload photo (include sha if file already exists in branch)
         if photo_b64:
             payload = {'message': f'Add photo for {name}', 'content': photo_b64, 'branch': branch}
+            try:
+                existing = gh_api('GET', f'contents/{photo_path}?ref={branch}', repo=REPO)
+                if existing.get('sha'):
+                    payload['sha'] = existing['sha']
+            except:
+                pass
             gh_api('PUT', f'contents/{photo_path}', payload, repo=REPO)
 
         # Get index.html and add card
