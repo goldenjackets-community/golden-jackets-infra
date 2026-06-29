@@ -217,7 +217,7 @@ def lambda_handler(event, context):
                 existing = len(re.findall(r'<div class="member-card', chall_section))
             card_number = existing + 1
 
-            card = build_card(name, city, state, date, linkedin, member_type, photo_path if photo_b64 else '', card_number)
+            card = build_card(name, city, state, date, linkedin, member_type, photo_path, card_number)
 
             if member_type == 'golden' or member_type == '':
                 # Primary: use END_GOLDEN_JACKETS marker (exists in all chapter sites)
