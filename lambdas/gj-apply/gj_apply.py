@@ -11,6 +11,8 @@ REPO_MAP = {
     'www.goldenjackets.co.il': 'goldenjackets-community/golden-jackets-israel',
     'goldenjackets.us': 'goldenjackets-community/golden-jackets-usa',
     'www.goldenjackets.us': 'goldenjackets-community/golden-jackets-usa',
+    'goldenjacketsus.com': 'goldenjackets-community/golden-jackets-usa',
+    'www.goldenjacketsus.com': 'goldenjackets-community/golden-jackets-usa',
     'goldenjackets.fr': 'goldenjackets-community/golden-jackets-france',
     'www.goldenjackets.fr': 'goldenjackets-community/golden-jackets-france',
     'goldenjackets.it': 'goldenjackets-community/golden-jackets-italy',
