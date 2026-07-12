@@ -128,6 +128,64 @@ def rebuild_remaining_prs(chapter, merged_pr_number):
                 if f.get('status') == 'removed':
                     continue
                 filepath = f['filename']
+                # Skip index.html — regenerate card from PR body into fresh master instead
+                if filepath == 'index.html':
+                    # Parse PR body for member data and regenerate card in master's index.html
+                    import re as _re
+                    name_m = _re.search(r'\*\*Name:\*\*\s*(.+)', pr_body)
+                    city_m = _re.search(r'\*\*City:\*\*\s*(.+)', pr_body)
+                    state_m = _re.search(r'\*\*State:\*\*\s*(.+)', pr_body)
+                    date_m = _re.search(r'\*\*Certified Date:\*\*\s*(.+)', pr_body)
+                    linkedin_m = _re.search(r'\*\*LinkedIn:\*\*\s*(.+)', pr_body)
+                    photo_m = _re.search(r'\*\*Photo:\*\*\s*(.+)', pr_body)
+                    mtype_m = _re.search(r'\*\*Type:\*\*\s*(.+)', pr_body)
+                    if not name_m:
+                        continue
+                    m_name = name_m.group(1).strip()
+                    m_city = city_m.group(1).strip() if city_m else ''
+                    m_state = state_m.group(1).strip() if state_m else ''
+                    m_date = date_m.group(1).strip() if date_m else ''
+                    m_linkedin = linkedin_m.group(1).strip() if linkedin_m else ''
+                    m_photo = photo_m.group(1).strip() if photo_m else ''
+                    m_type = mtype_m.group(1).strip() if mtype_m else 'golden'
+                    # Get fresh index.html from new branch (which is copy of master)
+                    try:
+                        idx_resp = github_api('GET', f'/repos/{org}/{repo}/contents/index.html?ref={new_branch}')
+                        import base64 as _b64
+                        idx_content = _b64.b64decode(idx_resp['content']).decode('utf-8')
+                        idx_sha = idx_resp['sha']
+                    except:
+                        continue
+                    # Skip if member already in index
+                    if m_name in idx_content:
+                        continue
+                    # Count existing cards for card number
+                    existing_count = len(_re.findall(r'<div class="member-card[^"]*"[^>]*data-state', idx_content.split('id="alumni"')[0] if 'id="alumni"' in idx_content else idx_content))
+                    card_num = existing_count + 1
+                    # Build card
+                    initials = ''.join([w[0].upper() for w in m_name.split()[:2]])
+                    photo_html = f'<img src="{m_photo}" alt="{m_name}" class="photo">' if m_photo else f'<div class="avatar">{initials}</div>'
+                    number_html = f'<span class="card-number">#{card_num}</span>\n        '
+                    card_html = f'''      <div class="member-card" data-state="{m_state}">
+        {number_html}{photo_html}
+        <h3>{m_name}</h3>
+        <div class="location">{m_city}</div>
+        <div class="tags">
+          <span class="tag">Golden Jacket</span>
+          <span class="tag">Member</span>
+        </div>
+        <div class="certified">Certified on {m_date}</div>
+        <div class="socials">
+          <a href="{m_linkedin}" target="_blank">in</a>
+        </div>
+      </div>'''
+                    # Insert before END_GOLDEN_JACKETS marker
+                    if '<!-- END_GOLDEN_JACKETS -->' in idx_content:
+                        idx_content = idx_content.replace('<!-- END_GOLDEN_JACKETS -->', card_html + '\n<!-- END_GOLDEN_JACKETS -->', 1)
+                        import base64 as _b64enc
+                        payload = {'message': f'Rebuild: index.html ({m_name})', 'content': _b64enc.b64encode(idx_content.encode()).decode(), 'branch': new_branch, 'sha': idx_sha}
+                        github_api('PUT', f'/repos/{org}/{repo}/contents/index.html', payload)
+                    continue
                 # Get file content from old branch (use blob sha)
                 blob_sha = f.get('sha')
                 if not blob_sha:
