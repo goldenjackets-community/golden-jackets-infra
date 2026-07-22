@@ -31,6 +31,8 @@ REPO_MAP = {
     'www.goldenjackets.cl': 'goldenjackets-community/golden-jackets-chile',
     'goldenjackets.co': 'goldenjackets-community/golden-jackets-colombia',
     'www.goldenjackets.co': 'goldenjackets-community/golden-jackets-colombia',
+    'goldenjackets.be': 'goldenjackets-community/golden-jackets-belgium',
+    'www.goldenjackets.be': 'goldenjackets-community/golden-jackets-belgium',
 }
 
 SNS_TOPIC_MAP = {
@@ -44,6 +46,8 @@ SNS_TOPIC_MAP = {
     'goldenjackets-community/golden-jackets-usa': 'arn:aws:sns:us-east-1:800712212925:gj-usa-alerts',
     'goldenjackets-community/golden-jackets-peru': 'arn:aws:sns:us-east-1:800712212925:gj-peru-alerts',
     'goldenjackets-community/golden-jackets-colombia': 'arn:aws:sns:us-east-1:800712212925:gj-colombia-alerts',
+    'goldenjackets.be': 'goldenjackets-community/golden-jackets-belgium',
+    'www.goldenjackets.be': 'goldenjackets-community/golden-jackets-belgium',
 }
 DEFAULT_REPO = os.environ.get('GITHUB_REPO', 'goldenjackets-community/golden-jackets-brazil')
 
