@@ -197,6 +197,7 @@ def lambda_handler(event, context):
             gh_api('POST', 'git/refs', {'ref': f'refs/heads/{branch}', 'sha': sha}, repo=REPO)
 
         # Upload photo (include sha if file already exists in branch)
+        photo_uploaded = False
         if photo_b64:
             payload = {'message': f'Add photo for {name}', 'content': photo_b64, 'branch': branch}
             try:
@@ -205,7 +206,32 @@ def lambda_handler(event, context):
                     payload['sha'] = existing['sha']
             except:
                 pass
-            gh_api('PUT', f'contents/{photo_path}', payload, repo=REPO)
+            # Retry up to 2 times to ensure photo is committed
+            for attempt in range(2):
+                try:
+                    result = gh_api('PUT', f'contents/{photo_path}', payload, repo=REPO)
+                    if result.get('content', {}).get('sha'):
+                        photo_uploaded = True
+                        break
+                    # If first attempt returned without sha, get sha and retry
+                    if attempt == 0:
+                        try:
+                            existing = gh_api('GET', f'contents/{photo_path}?ref={branch}', repo=REPO)
+                            if existing.get('sha'):
+                                payload['sha'] = existing['sha']
+                        except:
+                            pass
+                except Exception as e:
+                    if attempt == 0:
+                        try:
+                            existing = gh_api('GET', f'contents/{photo_path}?ref={branch}', repo=REPO)
+                            if existing.get('sha'):
+                                payload['sha'] = existing['sha']
+                        except:
+                            pass
+            # If photo upload failed, use avatar instead of broken image
+            if not photo_uploaded:
+                photo_path = ''
 
         # Get index.html and add card
         index_content, index_sha = get_file('index.html', branch, repo=REPO)
