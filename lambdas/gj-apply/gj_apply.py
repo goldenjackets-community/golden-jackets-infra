@@ -3,7 +3,15 @@ import urllib.request
 import base64
 import os
 
-GITHUB_TOKEN = os.environ.get('GH_TOKEN', '')
+def _get_github_token():
+    """Get GitHub token — prefers App installation token, falls back to env var."""
+    try:
+        from github_auth import get_installation_token
+        return get_installation_token()
+    except Exception:
+        return os.environ.get('GH_TOKEN', '')
+
+GITHUB_TOKEN = _get_github_token()
 REPO_MAP = {
     'goldenjackets.by': 'goldenjackets-community/golden-jackets-by',
     'www.goldenjackets.by': 'goldenjackets-community/golden-jackets-by',

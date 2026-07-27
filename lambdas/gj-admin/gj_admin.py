@@ -5,6 +5,15 @@ import urllib.request
 import os
 import time
 
+def _get_github_token():
+    """Get GitHub token — prefers App installation token, falls back to env var."""
+    try:
+        from github_auth import get_installation_token
+        return get_installation_token()
+    except Exception:
+        return os.environ.get('GITHUB_TOKEN', '')
+
+
 def trunc_subject(s): return s[:100]
 
 cognito = boto3.client('cognito-idp', region_name='us-east-1')
@@ -49,7 +58,7 @@ def get_users_in_group(group):
 # --- PR Management ---
 
 def github_api(method, path, body=None):
-    token = os.environ.get('GITHUB_TOKEN', '')
+    token = _get_github_token()
     url = f'https://api.github.com{path}'
     headers = {'Authorization': f'token {token}', 'Accept': 'application/vnd.github.v3+json', 'User-Agent': 'gj-admin'}
     data = json.dumps(body).encode() if body else None
@@ -342,7 +351,7 @@ def lambda_handler(event, context):
             url = body.get('url', '')
             summary = body.get('summary', '')
             author = body.get('author', 'unknown')
-            GH_TOKEN = os.environ.get('GITHUB_TOKEN', '')
+            GH_TOKEN = _get_github_token()
             article_repo_map = {'brazil': 'goldenjackets-community/golden-jackets-brazil', 'poland': 'goldenjackets-community/golden-jackets-poland', 'uk': 'goldenjackets-community/golden-jackets-uk', 'chile': 'goldenjackets-community/golden-jackets-chile', 'india': 'goldenjackets-community/golden-jackets-india', 'france': 'goldenjackets-community/golden-jackets-france', 'usa': 'goldenjackets-community/golden-jackets-usa', 'italy': 'goldenjackets-community/golden-jackets-italy', 'ecuador': 'goldenjackets-community/golden-jackets-ecuador', 'colombia': 'goldenjackets-community/golden-jackets-colombia'}
             REPO = article_repo_map.get(chapter, 'goldenjackets-community/golden-jackets-brazil')
 
@@ -631,7 +640,7 @@ import urllib.request
 import os
 
 def github_api(method, path, body=None):
-    token = os.environ.get('GITHUB_TOKEN', '')
+    token = _get_github_token()
     url = f'https://api.github.com{path}'
     headers = {'Authorization': f'token {token}', 'Accept': 'application/vnd.github.v3+json', 'User-Agent': 'gj-admin'}
     data = json.dumps(body).encode() if body else None
@@ -648,7 +657,7 @@ def move_member_card(chapter, member_name, target):
     repo = repo_map.get(chapter, '')
     if not repo:
         return {'error': 'Invalid chapter'}
-    token = os.environ.get('GITHUB_TOKEN', '')
+    token = _get_github_token()
     org = 'goldenjackets-community'
     try:
         branch = 'main'
@@ -777,7 +786,7 @@ def close_pr(chapter, pr_number):
 
 def create_chapter(params):
     """Trigger create-chapter workflow + upload photo/jacket to repo"""
-    token = os.environ.get('GITHUB_TOKEN', '')
+    token = _get_github_token()
     code = params.get('code', '')
     leader_name = params.get('leader_name', '').lower().replace(' ', '-')
     
