@@ -121,6 +121,22 @@ def build_card(name, city, state, date, linkedin, member_type, photo_path, card_
           <a href="{linkedin}" target="_blank">in</a>
         </div>
       </div>"""
+    elif 'rising' in member_type:
+        certs = '9' if '9' in member_type else ('8' if '8' in member_type else '7')
+        away = str(12 - int(certs))
+        return f"""      <div class="member-card rising" data-state="{state}">
+        {number_html}{photo_html}
+        <h3>{name}</h3>
+        <div class="location">{city}</div>
+        <div class="tags">
+          <span class="tag">{certs}/12 Certifications</span>
+          <span class="tag">Rising</span>
+        </div>
+        <div class="certified" style="color:#F0B866;font-weight:700;">{away} away from Golden Jacket \U0001f680</div>
+        <div class="socials">
+          <a href="{linkedin}" target="_blank">in</a>
+        </div>
+      </div>"""
     else:
         certs = '11' if '11' in member_type else '10'
         away = '1' if certs == '11' else '2'
@@ -288,6 +304,9 @@ _Rebuilt automatically after PR merge to avoid conflicts._"""
             elif member_type == 'alumni':
                 alumni_section = index_content.split('id="alumni"')[1].split('</section>')[0] if 'id="alumni"' in index_content else ''
                 existing = len(re.findall(r'<div class="member-card', alumni_section))
+            elif 'rising' in member_type:
+                rising_section = index_content.split('id="rising"')[1].split('</section>')[0] if 'id="rising"' in index_content else ''
+                existing = len(re.findall(r'<div class="member-card', rising_section))
             else:
                 chall_section = index_content.split('id="challengers"')[1].split('</section>')[0] if 'id="challengers"' in index_content else ''
                 existing = len(re.findall(r'<div class="member-card', chall_section))
@@ -317,11 +336,23 @@ _Rebuilt automatically after PR merge to avoid conflicts._"""
                         m2 = re.search(r'(    </div>\s*\n  </section>)', alumni_part)
                         if m2:
                             index_content = index_content.replace('id="alumni"' + alumni_part[:m2.start()] + m2.group(1), 'id="alumni"' + alumni_part[:m2.start()] + card + '\n' + m2.group(1), 1)
-            else:
-                # Challengers
-                m = re.search(r'(<!-- Challenger cards go here -->|<!-- END_CHALLENGERS -->)', index_content)
+            elif 'rising' in member_type:
+                # Rising - insert at END of queue (before END_RISING marker)
+                m = re.search(r'(<!-- END_RISING -->)', index_content)
                 if m:
-                    index_content = index_content.replace(m.group(1), card + '\n      ' + m.group(1), 1)
+                    index_content = index_content.replace(m.group(1), card + '\n\n' + m.group(1), 1)
+                else:
+                    parts = index_content.split('id="rising"')
+                    if len(parts) > 1:
+                        rising_part = parts[1]
+                        m2 = re.search(r'(    </div>\s*\n  </section>)', rising_part)
+                        if m2:
+                            index_content = index_content.replace('id="rising"' + rising_part[:m2.start()] + m2.group(1), 'id="rising"' + rising_part[:m2.start()] + card + '\n' + m2.group(1), 1)
+            else:
+                # Challengers - insert at END of queue (before END marker)
+                m = re.search(r'(<!-- END_CHALLENGERS -->)', index_content)
+                if m:
+                    index_content = index_content.replace(m.group(1), card + '\n' + m.group(1), 1)
                 else:
                     parts = index_content.split('id="challengers"')
                     if len(parts) > 1:
