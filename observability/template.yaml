@@ -1,0 +1,795 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Golden Jackets - Basic Observability (Health Checks, Alarms, Domain/Cert Monitoring)
+
+Parameters:
+  AlertEmail:
+    Type: String
+    Default: ricardo.gulias@cloud2point.com.br
+    Description: Email to receive alerts
+
+Resources:
+  # --- SNS Topic ---
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: gj-site-alerts
+      Tags:
+        - Key: project
+          Value: golden-jackets
+
+  AlertSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: email
+      Endpoint: !Ref AlertEmail
+      TopicArn: !Ref AlertTopic
+
+  # --- Health Checks ---
+  # Global (GitHub Pages)
+  HealthCheckGlobal:
+    Type: AWS::Route53::HealthCheck
+    Properties:
+      HealthCheckConfig:
+        FullyQualifiedDomainName: goldenjackets.org
+        Port: 443
+        Type: HTTPS
+        ResourcePath: /
+        RequestInterval: 30
+        FailureThreshold: 3
+        EnableSNI: true
+      HealthCheckTags:
+        - Key: Name
+          Value: gj-global
+        - Key: project
+          Value: golden-jackets
+
+  # Brazil
+  HealthCheckBrazil:
+    Type: AWS::Route53::HealthCheck
+    Properties:
+      HealthCheckConfig:
+        FullyQualifiedDomainName: www.goldenjacketsbrazil.com
+        Port: 443
+        Type: HTTPS
+        ResourcePath: /
+        RequestInterval: 30
+        FailureThreshold: 3
+        EnableSNI: true
+      HealthCheckTags:
+        - Key: Name
+          Value: gj-brazil
+        - Key: project
+          Value: golden-jackets
+
+  # Poland
+  HealthCheckPoland:
+    Type: AWS::Route53::HealthCheck
+    Properties:
+      HealthCheckConfig:
+        FullyQualifiedDomainName: goldenjackets.pl
+        Port: 443
+        Type: HTTPS
+        ResourcePath: /
+        RequestInterval: 30
+        FailureThreshold: 3
+        EnableSNI: true
+      HealthCheckTags:
+        - Key: Name
+          Value: gj-poland
+        - Key: project
+          Value: golden-jackets
+
+  # UK
+  HealthCheckUK:
+    Type: AWS::Route53::HealthCheck
+    Properties:
+      HealthCheckConfig:
+        FullyQualifiedDomainName: goldenjackets.co.uk
+        Port: 443
+        Type: HTTPS
+        ResourcePath: /
+        RequestInterval: 30
+        FailureThreshold: 3
+        EnableSNI: true
+      HealthCheckTags:
+        - Key: Name
+          Value: gj-uk
+        - Key: project
+          Value: golden-jackets
+
+  # Chile
+  HealthCheckChile:
+    Type: AWS::Route53::HealthCheck
+    Properties:
+      HealthCheckConfig:
+        FullyQualifiedDomainName: goldenjackets.cl
+        Port: 443
+        Type: HTTPS
+        ResourcePath: /
+        RequestInterval: 30
+        FailureThreshold: 3
+        EnableSNI: true
+      HealthCheckTags:
+        - Key: Name
+          Value: gj-chile
+        - Key: project
+          Value: golden-jackets
+
+  # India
+  HealthCheckIndia:
+    Type: AWS::Route53::HealthCheck
+    Properties:
+      HealthCheckConfig:
+        FullyQualifiedDomainName: goldenjackets.in
+        Port: 443
+        Type: HTTPS
+        ResourcePath: /
+        RequestInterval: 30
+        FailureThreshold: 3
+        EnableSNI: true
+      HealthCheckTags:
+        - Key: Name
+          Value: gj-india
+        - Key: project
+          Value: golden-jackets
+
+  # France
+  HealthCheckFrance:
+    Type: AWS::Route53::HealthCheck
+    Properties:
+      HealthCheckConfig:
+        FullyQualifiedDomainName: goldenjackets.fr
+        Port: 443
+        Type: HTTPS
+        ResourcePath: /
+        RequestInterval: 30
+        FailureThreshold: 3
+        EnableSNI: true
+      HealthCheckTags:
+        - Key: Name
+          Value: gj-france
+        - Key: project
+          Value: golden-jackets
+
+  # USA
+  HealthCheckUSA:
+    Type: AWS::Route53::HealthCheck
+    Properties:
+      HealthCheckConfig:
+        FullyQualifiedDomainName: goldenjackets.us
+        Port: 443
+        Type: HTTPS
+        ResourcePath: /
+        RequestInterval: 30
+        FailureThreshold: 3
+        EnableSNI: true
+      HealthCheckTags:
+        - Key: Name
+          Value: gj-usa
+        - Key: project
+          Value: golden-jackets
+
+  # Italy
+  HealthCheckItaly:
+    Type: AWS::Route53::HealthCheck
+    Properties:
+      HealthCheckConfig:
+        FullyQualifiedDomainName: goldenjackets.it
+        Port: 443
+        Type: HTTPS
+        ResourcePath: /
+        RequestInterval: 30
+        FailureThreshold: 3
+        EnableSNI: true
+      HealthCheckTags:
+        - Key: Name
+          Value: gj-italy
+        - Key: project
+          Value: golden-jackets
+
+  # Peru
+  HealthCheckPeru:
+    Type: AWS::Route53::HealthCheck
+    Properties:
+      HealthCheckConfig:
+        FullyQualifiedDomainName: goldenjackets.pe
+        Port: 443
+        Type: HTTPS
+        ResourcePath: /
+        RequestInterval: 30
+        FailureThreshold: 3
+        EnableSNI: true
+      HealthCheckTags:
+        - Key: Name
+          Value: gj-peru
+        - Key: project
+          Value: golden-jackets
+
+  # Israel
+  HealthCheckIsrael:
+    Type: AWS::Route53::HealthCheck
+    Properties:
+      HealthCheckConfig:
+        FullyQualifiedDomainName: goldenjackets.co.il
+        Port: 443
+        Type: HTTPS
+        ResourcePath: /
+        RequestInterval: 30
+        FailureThreshold: 3
+        EnableSNI: true
+      HealthCheckTags:
+        - Key: Name
+          Value: gj-israel
+        - Key: project
+          Value: golden-jackets
+
+  # Belarus
+  HealthCheckBelarus:
+    Type: AWS::Route53::HealthCheck
+    Properties:
+      HealthCheckConfig:
+        FullyQualifiedDomainName: goldenjackets.by
+        Port: 443
+        Type: HTTPS
+        ResourcePath: /
+        RequestInterval: 30
+        FailureThreshold: 3
+        EnableSNI: true
+      HealthCheckTags:
+        - Key: Name
+          Value: gj-belarus
+        - Key: project
+          Value: golden-jackets
+
+  # Ecuador
+  HealthCheckEcuador:
+    Type: AWS::Route53::HealthCheck
+    Properties:
+      HealthCheckConfig:
+        FullyQualifiedDomainName: goldenjackets.ec
+        Port: 443
+        Type: HTTPS
+        ResourcePath: /
+        RequestInterval: 30
+        FailureThreshold: 3
+        EnableSNI: true
+      HealthCheckTags:
+        - Key: Name
+          Value: gj-ecuador
+        - Key: project
+          Value: golden-jackets
+
+  # Colombia
+  HealthCheckColombia:
+    Type: AWS::Route53::HealthCheck
+    Properties:
+      HealthCheckConfig:
+        FullyQualifiedDomainName: goldenjackets.co
+        Port: 443
+        Type: HTTPS
+        ResourcePath: /
+        RequestInterval: 30
+        FailureThreshold: 3
+        EnableSNI: true
+      HealthCheckTags:
+        - Key: Name
+          Value: gj-colombia
+        - Key: project
+          Value: golden-jackets
+
+  # Belgium
+  HealthCheckBelgium:
+    Type: AWS::Route53::HealthCheck
+    Properties:
+      HealthCheckConfig:
+        FullyQualifiedDomainName: goldenjackets.be
+        Port: 443
+        Type: HTTPS
+        ResourcePath: /
+        RequestInterval: 30
+        FailureThreshold: 3
+        EnableSNI: true
+      HealthCheckTags:
+        - Key: Name
+          Value: gj-belgium
+        - Key: project
+          Value: golden-jackets
+
+  # UAE
+  HealthCheckUAE:
+    Type: AWS::Route53::HealthCheck
+    Properties:
+      HealthCheckConfig:
+        FullyQualifiedDomainName: goldenjackets.ae
+        Port: 443
+        Type: HTTPS
+        ResourcePath: /
+        RequestInterval: 30
+        FailureThreshold: 3
+        EnableSNI: true
+      HealthCheckTags:
+        - Key: Name
+          Value: gj-uae
+        - Key: project
+          Value: golden-jackets
+
+  # --- CloudWatch Alarms (one per health check) ---
+  AlarmGlobal:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: gj-down-global
+      AlarmDescription: goldenjackets.org is DOWN
+      Namespace: AWS/Route53
+      MetricName: HealthCheckStatus
+      Dimensions:
+        - Name: HealthCheckId
+          Value: !Ref HealthCheckGlobal
+      Statistic: Minimum
+      Period: 60
+      EvaluationPeriods: 2
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
+      TreatMissingData: breaching
+
+  AlarmBrazil:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: gj-down-brazil
+      AlarmDescription: www.goldenjacketsbrazil.com is DOWN
+      Namespace: AWS/Route53
+      MetricName: HealthCheckStatus
+      Dimensions:
+        - Name: HealthCheckId
+          Value: !Ref HealthCheckBrazil
+      Statistic: Minimum
+      Period: 60
+      EvaluationPeriods: 2
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
+      TreatMissingData: breaching
+
+  AlarmPoland:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: gj-down-poland
+      AlarmDescription: goldenjackets.pl is DOWN
+      Namespace: AWS/Route53
+      MetricName: HealthCheckStatus
+      Dimensions:
+        - Name: HealthCheckId
+          Value: !Ref HealthCheckPoland
+      Statistic: Minimum
+      Period: 60
+      EvaluationPeriods: 2
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
+      TreatMissingData: breaching
+
+  AlarmUK:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: gj-down-uk
+      AlarmDescription: goldenjackets.co.uk is DOWN
+      Namespace: AWS/Route53
+      MetricName: HealthCheckStatus
+      Dimensions:
+        - Name: HealthCheckId
+          Value: !Ref HealthCheckUK
+      Statistic: Minimum
+      Period: 60
+      EvaluationPeriods: 2
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
+      TreatMissingData: breaching
+
+  AlarmChile:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: gj-down-chile
+      AlarmDescription: goldenjackets.cl is DOWN
+      Namespace: AWS/Route53
+      MetricName: HealthCheckStatus
+      Dimensions:
+        - Name: HealthCheckId
+          Value: !Ref HealthCheckChile
+      Statistic: Minimum
+      Period: 60
+      EvaluationPeriods: 2
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
+      TreatMissingData: breaching
+
+  AlarmIndia:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: gj-down-india
+      AlarmDescription: goldenjackets.in is DOWN
+      Namespace: AWS/Route53
+      MetricName: HealthCheckStatus
+      Dimensions:
+        - Name: HealthCheckId
+          Value: !Ref HealthCheckIndia
+      Statistic: Minimum
+      Period: 60
+      EvaluationPeriods: 2
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
+      TreatMissingData: breaching
+
+  AlarmFrance:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: gj-down-france
+      AlarmDescription: goldenjackets.fr is DOWN
+      Namespace: AWS/Route53
+      MetricName: HealthCheckStatus
+      Dimensions:
+        - Name: HealthCheckId
+          Value: !Ref HealthCheckFrance
+      Statistic: Minimum
+      Period: 60
+      EvaluationPeriods: 2
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
+      TreatMissingData: breaching
+
+  AlarmUSA:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: gj-down-usa
+      AlarmDescription: goldenjackets.us is DOWN
+      Namespace: AWS/Route53
+      MetricName: HealthCheckStatus
+      Dimensions:
+        - Name: HealthCheckId
+          Value: !Ref HealthCheckUSA
+      Statistic: Minimum
+      Period: 60
+      EvaluationPeriods: 2
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
+      TreatMissingData: breaching
+
+  AlarmItaly:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: gj-down-italy
+      AlarmDescription: goldenjackets.it is DOWN
+      Namespace: AWS/Route53
+      MetricName: HealthCheckStatus
+      Dimensions:
+        - Name: HealthCheckId
+          Value: !Ref HealthCheckItaly
+      Statistic: Minimum
+      Period: 60
+      EvaluationPeriods: 2
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
+      TreatMissingData: breaching
+
+  AlarmPeru:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: gj-down-peru
+      AlarmDescription: goldenjackets.pe is DOWN
+      Namespace: AWS/Route53
+      MetricName: HealthCheckStatus
+      Dimensions:
+        - Name: HealthCheckId
+          Value: !Ref HealthCheckPeru
+      Statistic: Minimum
+      Period: 60
+      EvaluationPeriods: 2
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
+      TreatMissingData: breaching
+
+  AlarmIsrael:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: gj-down-israel
+      AlarmDescription: goldenjackets.co.il is DOWN
+      Namespace: AWS/Route53
+      MetricName: HealthCheckStatus
+      Dimensions:
+        - Name: HealthCheckId
+          Value: !Ref HealthCheckIsrael
+      Statistic: Minimum
+      Period: 60
+      EvaluationPeriods: 2
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
+      TreatMissingData: breaching
+
+  AlarmBelarus:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: gj-down-belarus
+      AlarmDescription: goldenjackets.by is DOWN
+      Namespace: AWS/Route53
+      MetricName: HealthCheckStatus
+      Dimensions:
+        - Name: HealthCheckId
+          Value: !Ref HealthCheckBelarus
+      Statistic: Minimum
+      Period: 60
+      EvaluationPeriods: 2
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
+      TreatMissingData: breaching
+
+  AlarmEcuador:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: gj-down-ecuador
+      AlarmDescription: goldenjackets.ec is DOWN
+      Namespace: AWS/Route53
+      MetricName: HealthCheckStatus
+      Dimensions:
+        - Name: HealthCheckId
+          Value: !Ref HealthCheckEcuador
+      Statistic: Minimum
+      Period: 60
+      EvaluationPeriods: 2
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
+      TreatMissingData: breaching
+
+  AlarmColombia:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: gj-down-colombia
+      AlarmDescription: goldenjackets.co is DOWN
+      Namespace: AWS/Route53
+      MetricName: HealthCheckStatus
+      Dimensions:
+        - Name: HealthCheckId
+          Value: !Ref HealthCheckColombia
+      Statistic: Minimum
+      Period: 60
+      EvaluationPeriods: 2
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
+      TreatMissingData: breaching
+
+  AlarmBelgium:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: gj-down-belgium
+      AlarmDescription: goldenjackets.be is DOWN
+      Namespace: AWS/Route53
+      MetricName: HealthCheckStatus
+      Dimensions:
+        - Name: HealthCheckId
+          Value: !Ref HealthCheckBelgium
+      Statistic: Minimum
+      Period: 60
+      EvaluationPeriods: 2
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
+      TreatMissingData: breaching
+
+  AlarmUAE:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: gj-down-uae
+      AlarmDescription: goldenjackets.ae is DOWN
+      Namespace: AWS/Route53
+      MetricName: HealthCheckStatus
+      Dimensions:
+        - Name: HealthCheckId
+          Value: !Ref HealthCheckUAE
+      Statistic: Minimum
+      Period: 60
+      EvaluationPeriods: 2
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
+      TreatMissingData: breaching
+
+  # --- Domain & Certificate Expiration Monitor (Lambda) ---
+  MonitorRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: gj-expiration-monitor-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: gj-monitor-policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - route53domains:GetDomainDetail
+                  - route53domains:ListDomains
+                  - acm:ListCertificates
+                  - acm:DescribeCertificate
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource: !Ref AlertTopic
+      Tags:
+        - Key: project
+          Value: golden-jackets
+
+  ExpirationMonitor:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: gj-expiration-monitor
+      Runtime: python3.12
+      Handler: index.handler
+      Timeout: 30
+      MemorySize: 128
+      Role: !GetAtt MonitorRole.Arn
+      Environment:
+        Variables:
+          SNS_TOPIC_ARN: !Ref AlertTopic
+          DOMAIN_WARNING_DAYS: '30'
+          CERT_WARNING_DAYS: '30'
+      Tags:
+        - Key: project
+          Value: golden-jackets
+      Code:
+        ZipFile: |
+          import boto3
+          import os
+          from datetime import datetime, timezone
+
+          def handler(event, context):
+              sns = boto3.client('sns')
+              topic_arn = os.environ['SNS_TOPIC_ARN']
+              domain_warn = int(os.environ['DOMAIN_WARNING_DAYS'])
+              cert_warn = int(os.environ['CERT_WARNING_DAYS'])
+              alerts = []
+              now = datetime.now(timezone.utc)
+
+              # Check domain expirations
+              r53d = boto3.client('route53domains', region_name='us-east-1')
+              domains = r53d.list_domains()['Domains']
+              for d in domains:
+                  name = d['DomainName']
+                  if 'goldenjackets' not in name:
+                      continue
+                  detail = r53d.get_domain_detail(DomainName=name)
+                  exp = detail['ExpirationDate']
+                  if exp.tzinfo is None:
+                      exp = exp.replace(tzinfo=timezone.utc)
+                  days_left = (exp - now).days
+                  if days_left <= domain_warn:
+                      alerts.append(f"DOMAIN EXPIRING: {name} expires in {days_left} days ({exp.strftime('%Y-%m-%d')})")
+                  # Check clientHold
+                  statuses = detail.get('StatusList', [])
+                  if 'clientHold' in statuses:
+                      alerts.append(f"DOMAIN SUSPENDED: {name} has clientHold status - DNS not resolving!")
+
+              # Check ACM certificate expirations
+              acm = boto3.client('acm', region_name='us-east-1')
+              certs = acm.list_certificates(CertificateStatuses=['ISSUED'])['CertificateSummaryList']
+              for c in certs:
+                  arn = c['CertificateArn']
+                  domain = c.get('DomainName', '')
+                  if 'goldenjackets' not in domain:
+                      continue
+                  detail = acm.describe_certificate(CertificateArn=arn)['Certificate']
+                  not_after = detail.get('NotAfter')
+                  if not_after:
+                      if not_after.tzinfo is None:
+                          not_after = not_after.replace(tzinfo=timezone.utc)
+                      days_left = (not_after - now).days
+                      if days_left <= cert_warn:
+                          alerts.append(f"CERT EXPIRING: {domain} cert expires in {days_left} days ({not_after.strftime('%Y-%m-%d')})")
+
+              if alerts:
+                  message = "Golden Jackets Expiration Alerts:\n\n" + "\n".join(alerts)
+                  sns.publish(
+                      TopicArn=topic_arn,
+                      Subject="[GJ] Domain/Certificate Expiration Alert",
+                      Message=message
+                  )
+                  print(f"Sent {len(alerts)} alerts")
+              else:
+                  print("All domains and certs OK")
+
+              return {'statusCode': 200, 'alerts': len(alerts)}
+
+  MonitorSchedule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: gj-expiration-check-daily
+      Description: Daily check for domain and certificate expirations
+      ScheduleExpression: rate(1 day)
+      State: ENABLED
+      Targets:
+        - Id: expiration-monitor
+          Arn: !GetAtt ExpirationMonitor.Arn
+
+  MonitorPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ExpirationMonitor
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt MonitorSchedule.Arn
+
+Outputs:
+  TopicArn:
+    Value: !Ref AlertTopic
+    Description: SNS Topic ARN for alerts
+  HealthCheckCount:
+    Value: '16'
+    Description: Number of health checks created
+  MonitorFunction:
+    Value: !Ref ExpirationMonitor
+    Description: Expiration monitor Lambda function name

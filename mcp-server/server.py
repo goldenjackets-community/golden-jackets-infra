@@ -37,6 +37,17 @@ CHAPTERS = {
     "poland": {"bucket": "goldenjackets.pl", "distribution": "E174XK4PPCRG0L"},
     "uk": {"bucket": "goldenjackets.co.uk", "distribution": "E10YX1BT67IAVC"},
     "chile": {"bucket": "goldenjackets.cl", "distribution": "EHYKP6CKN2HQ4"},
+    "india": {"bucket": "goldenjackets.in", "distribution": "E3NWIF50KGT06C"},
+    "france": {"bucket": "goldenjackets.fr", "distribution": "E2O44PVJBUUR5Y"},
+    "usa": {"bucket": "goldenjackets.us", "distribution": "E9TMGWA6LF7DP"},
+    "italy": {"bucket": "goldenjackets.it", "distribution": "E1PME26ZJ9H7WV"},
+    "peru": {"bucket": "goldenjackets.pe", "distribution": "E3V1Z9N208C841"},
+    "israel": {"bucket": "goldenjackets.co.il", "distribution": "E12FG4V68VTB02"},
+    "belarus": {"bucket": "goldenjackets.by", "distribution": "E2OVUWFPFH9S4Z"},
+    "ecuador": {"bucket": "goldenjackets.ec", "distribution": "E3NV9WJS4AZL32"},
+    "colombia": {"bucket": "goldenjackets.co", "distribution": "E2IPBAVCWPQWL1"},
+    "belgium": {"bucket": "goldenjackets.be", "distribution": "EE0BVLVAL9RPX"},
+    "uae": {"bucket": "goldenjackets.ae", "distribution": "E3I43LMFL7RNDS"},
 }
 
 # --- Tool implementations ---
@@ -105,7 +116,7 @@ def suggest_topic(args):
 TOOLS = {
     "list-members": {
         "description": "List Cognito members of a chapter (Lounge users)",
-        "inputSchema": {"type": "object", "properties": {"chapter": {"type": "string", "description": "Chapter name (brazil, poland, uk, chile)", "default": "brazil"}}},
+        "inputSchema": {"type": "object", "properties": {"chapter": {"type": "string", "description": "Chapter name (brazil, poland, uk, chile, india, france, usa, italy, peru, israel, belarus, ecuador, colombia, belgium, uae)", "default": "brazil"}}},
         "handler": list_members,
     },
     "chapter-status": {
