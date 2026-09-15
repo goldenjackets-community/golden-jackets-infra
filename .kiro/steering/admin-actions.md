@@ -9,8 +9,8 @@
 
 - **URL:** `POST https://kqiq2bltjd.execute-api.us-east-1.amazonaws.com/admin`
 - **Auth:** JWT do Cognito (claim `email`). O caller é identificado por email + grupos.
-- **Global admins:** `ricardo.gulias@goldenjacketsbrazil.com`, `erickmancz@gmail.com`,
-  `wagnermazevedo@hotmail.com` — veem/agem em todos os chapters.
+- **Global admins:** lista definida em `GLOBAL_ADMINS` no `lambdas/gj-admin/gj_admin.py`
+  (Ricardo, Erick, Wagner). Veem/agem em todos os chapters.
 - **Chapter admins:** só o próprio chapter (grupo Cognito).
 - **Body:** `{ "action": "...", "chapter": "...", ... }`. Se `chapter` não vier, é
   detectado pelo header `origin` ou pelo primeiro grupo do caller.
