@@ -1,0 +1,59 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Validate Member Card on Save",
+      "trigger": "PostFileSave",
+      "action": {
+        "type": "agent",
+        "prompt": "O arquivo index.html de um chapter foi salvo. Seguindo o steering known-bugs (BUG-1) e counting-rules, verifique se algum card de membro foi adicionado e, se sim, confirme que tem a estrutura completa: class=member-card, data-state com UF/estado real (nunca 'Other'), card-number sequencial, foto ou avatar, e tags de categoria (Golden/Challenger/Rising/Alumni). Confirme tambem que nao ha card vazio nem HTML quebrado e que foi inserido antes do marker correto da secao. Se algo estiver errado, aponte exatamente o que corrigir. Se estiver tudo certo, confirme brevemente. Se nao houver card novo, ignore."
+      },
+      "enabled": true
+    },
+    {
+      "name": "Global Counters Consistency Check",
+      "trigger": "PostFileSave",
+      "action": {
+        "type": "agent",
+        "prompt": "Se o arquivo salvo for o index.html do golden-jackets-global (ou o data.json de contagem), verifique seguindo known-bugs (BUG-2) e counting-rules que os numeros de membros/certificacoes/paises estao iguais em TODOS os pontos: ticker (2x, duplicado pro loop), hero data-target (o numero grande animado - o mais esquecido), tooltip do mapa, cards de chapter, meta/social description e status line. NAO alterar historico/timeline datado. Aponte qual ponto esta desatualizado. Nunca inflar numeros (regra de integridade). Se nao for o global, ignore."
+      },
+      "enabled": true
+    },
+    {
+      "name": "Broken Link & Domain Typo Check",
+      "trigger": "PostFileSave",
+      "action": {
+        "type": "agent",
+        "prompt": "Se um index.html foi salvo, faca um scan rapido de links seguindo known-bugs: (1) links de LinkedIn de chapter devem usar o slug REAL da pagina (ex: golden-jackets-us e nao golden-jackets-usa); (2) procure typos de dominio comuns; (3) confirme que botoes de Apply / Join Us / 'I am a Golden Jacket' apontam pro formulario de aplicacao real e nao pro LinkedIn. Liste qualquer link suspeito com o local. Se nao achar problema, confirme brevemente."
+      },
+      "enabled": true
+    },
+    {
+      "name": "Chapter Branch Awareness Before Deploy",
+      "trigger": "PostFileSave",
+      "action": {
+        "type": "agent",
+        "prompt": "Se um arquivo de site de chapter foi salvo e pode ser enviado pro repo, lembre seguindo known-bugs que o branch default VARIA por chapter: 'main' para brazil/belgium/italy/uae e 'master' para os demais (usa, poland, colombia, chile, france, peru, israel, by, ecuador, india, uk, global). Antes de qualquer push, o branch correto deve ser detectado. Apenas relembre isso de forma curta se o contexto for de deploy; caso contrario ignore."
+      },
+      "enabled": true
+    },
+    {
+      "name": "MCP Server Edit Guard",
+      "trigger": "PostFileSave",
+      "action": {
+        "type": "agent",
+        "prompt": "Se o arquivo salvo for mcp-server/server.py, confirme que as mudancas foram ADITIVAS: nenhuma das 5 tools existentes (list-members, list-chapters, chapter-status, invalidate-cache, suggest-topic) foi removida ou renomeada. Confirme que novas tools seguem o mesmo padrao das existentes e que o profile AWS usado e gj-mcp. Se algo existente foi quebrado, alerte. Se nao for esse arquivo, ignore."
+      },
+      "enabled": true
+    },
+    {
+      "name": "Spec Sync Reminder",
+      "trigger": "PostFileSave",
+      "action": {
+        "type": "agent",
+        "prompt": "Se um arquivo dentro de .kiro/specs/community-platform/ (requirements.md, design.md ou tasks.md) foi salvo, verifique se a mudanca mantem coerencia entre os tres documentos e com o steering. Se uma nova capacidade foi adicionada ao design, relembre de refletir em tasks.md. Mantenha curto. Se nao for arquivo de spec, ignore."
+      },
+      "enabled": true
+    }
+  ]
+}

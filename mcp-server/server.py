@@ -113,6 +113,118 @@ def suggest_topic(args):
     except Exception as e:
         return {"error": str(e)}
 
+# --- Phase 2 tools (additive) ---
+# These orchestrate the existing gj-admin API and read-only AWS/GitHub state.
+# GitHub-side actions go through gj-admin (which holds the GitHub App), so this
+# server needs no GitHub credentials of its own.
+
+import os
+import urllib.request
+
+ADMIN_API = os.environ.get("GJ_ADMIN_API", "https://kqiq2bltjd.execute-api.us-east-1.amazonaws.com/admin")
+ADMIN_TOKEN = os.environ.get("GJ_ADMIN_TOKEN", "")  # Cognito JWT for admin calls (optional)
+
+# Certs-per-category formula and thresholds (see steering counting-rules)
+CATEGORY_CERTS = {"golden": 12, "challenger": 10, "rising": 8, "alumni": 12}
+
+def _admin_call(action, extra=None):
+    """Call the gj-admin API. Requires a Cognito JWT in GJ_ADMIN_TOKEN."""
+    if not ADMIN_TOKEN:
+        return {"error": "GJ_ADMIN_TOKEN not set (Cognito JWT required for admin actions)"}
+    payload = {"action": action}
+    if extra:
+        payload.update(extra)
+    req = urllib.request.Request(
+        ADMIN_API,
+        data=json.dumps(payload).encode(),
+        headers={"Content-Type": "application/json", "Authorization": f"Bearer {ADMIN_TOKEN}"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=25) as r:
+            return json.loads(r.read().decode() or "{}")
+    except Exception as e:
+        return {"error": str(e)}
+
+def approve_member_pr(args):
+    """Approve (merge) a member PR via gj-admin merge-pr, after a safety note."""
+    chapter = args.get("chapter")
+    pr = args.get("pr_number")
+    if not chapter or not pr:
+        return {"error": "chapter and pr_number are required"}
+    # Safety: caller should have validated the diff has a non-empty member-card (BUG-1).
+    return _admin_call("merge-pr", {"chapter": chapter, "pr_number": pr})
+
+def recount_community(args):
+    """Recount members per chapter from Cognito groups (source of truth = site cards +
+    Cognito). Read-only aggregation; never inflates."""
+    chapters = args.get("chapters") or list(CHAPTERS.keys())
+    totals = {}
+    grand = 0
+    for ch in chapters:
+        res = list_members({"chapter": ch})
+        n = res.get("count", 0) if isinstance(res, dict) else 0
+        totals[ch] = n
+        grand += n
+    return {"per_chapter": totals, "total_cognito_members": grand,
+            "note": "Cognito Lounge members. Site card counts are the public source of truth; reconcile before publishing."}
+
+def add_member(args):
+    """Create a Cognito user in a chapter via gj-admin create-user."""
+    chapter = args.get("chapter")
+    email = args.get("email")
+    if not chapter or not email:
+        return {"error": "chapter and email are required"}
+    return _admin_call("create-user", {"chapter": chapter, "email": email})
+
+def check_broken_links(args):
+    """Check that each chapter site responds (basic health) at its root domain."""
+    results = {}
+    for name, cfg in CHAPTERS.items():
+        host = cfg["bucket"]
+        url = f"https://{host}/"
+        try:
+            req = urllib.request.Request(url, method="HEAD", headers={"User-Agent": "gj-mcp-linkcheck"})
+            with urllib.request.urlopen(req, timeout=10) as r:
+                results[name] = {"url": url, "status": r.status}
+        except Exception as e:
+            results[name] = {"url": url, "status": "error", "detail": str(e)}
+    broken = {k: v for k, v in results.items() if v.get("status") in ("error",) or (isinstance(v.get("status"), int) and v["status"] >= 400)}
+    return {"checked": len(results), "broken_count": len(broken), "broken": broken, "all": results}
+
+def community_stats(args):
+    """Aggregate community stats (chapters + Cognito members). Never inflates."""
+    member_totals = recount_community({})
+    return {
+        "chapters": len(CHAPTERS),
+        "chapter_list": list(CHAPTERS.keys()),
+        "cognito_members_total": member_totals.get("total_cognito_members", 0),
+        "per_chapter": member_totals.get("per_chapter", {}),
+        "certs_formula": "golden*12 + challenger*10 + rising*8 + alumni*12",
+        "note": "Numbers reflect real state. Do not inflate (see steering counting-rules).",
+    }
+
+def validate_golden_jacket(args):
+    """Validate a member category against the cert count (sacred ruler)."""
+    certs = args.get("certs")
+    if certs is None:
+        return {"error": "certs (0-12) is required"}
+    try:
+        certs = int(certs)
+    except Exception:
+        return {"error": "certs must be an integer 0-12"}
+    if certs >= 12:
+        category = "golden"
+    elif certs >= 10:
+        category = "challenger"
+    elif certs >= 7:
+        category = "rising"
+    else:
+        category = "below-rising"
+    return {"certs": certs, "category": category,
+            "rule": "golden=12/12, challenger=10-11, rising=7-9, alumni=expired golden",
+            "note": "Alumni is a former golden whose certs expired; determine by history, not count."}
+
 TOOLS = {
     "list-members": {
         "description": "List Cognito members of a chapter (Lounge users)",
@@ -138,6 +250,36 @@ TOOLS = {
         "description": "Suggest an article topic (sends SNS notification)",
         "inputSchema": {"type": "object", "properties": {"topic": {"type": "string", "description": "Topic suggestion"}, "author": {"type": "string", "description": "Who is suggesting"}, "chapter": {"type": "string", "default": "brazil"}}, "required": ["topic"]},
         "handler": suggest_topic,
+    },
+    "approve-member-pr": {
+        "description": "Approve (merge) a member PR via gj-admin. Validate the diff has a non-empty member-card first (BUG-1). Requires GJ_ADMIN_TOKEN.",
+        "inputSchema": {"type": "object", "properties": {"chapter": {"type": "string", "description": "Chapter name"}, "pr_number": {"type": "integer", "description": "PR number to merge"}}, "required": ["chapter", "pr_number"]},
+        "handler": approve_member_pr,
+    },
+    "recount-community": {
+        "description": "Recount Cognito members per chapter (read-only aggregation, never inflates)",
+        "inputSchema": {"type": "object", "properties": {"chapters": {"type": "array", "items": {"type": "string"}, "description": "Optional subset of chapters; defaults to all"}}},
+        "handler": recount_community,
+    },
+    "add-member": {
+        "description": "Create a Cognito user in a chapter via gj-admin create-user. Requires GJ_ADMIN_TOKEN.",
+        "inputSchema": {"type": "object", "properties": {"chapter": {"type": "string", "description": "Chapter name"}, "email": {"type": "string", "description": "Member email"}}, "required": ["chapter", "email"]},
+        "handler": add_member,
+    },
+    "check-broken-links": {
+        "description": "HEAD-check every chapter site root and report which are down/erroring",
+        "inputSchema": {"type": "object", "properties": {}},
+        "handler": check_broken_links,
+    },
+    "community-stats": {
+        "description": "Aggregate community stats (chapters + Cognito members). Never inflates numbers.",
+        "inputSchema": {"type": "object", "properties": {}},
+        "handler": community_stats,
+    },
+    "validate-golden-jacket": {
+        "description": "Validate a member category against cert count (Golden=12, Challenger=10-11, Rising=7-9)",
+        "inputSchema": {"type": "object", "properties": {"certs": {"type": "integer", "description": "Number of active AWS certs (0-12)"}}, "required": ["certs"]},
+        "handler": validate_golden_jacket,
     },
 }
 
