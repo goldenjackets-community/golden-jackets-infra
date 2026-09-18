@@ -256,6 +256,19 @@ def lambda_handler(event, context):
         if not is_global_admin and chapter not in caller_groups and action not in skip_chapter_actions:
             return {'statusCode': 403, 'headers': cors, 'body': json.dumps({'error': 'Access denied to this chapter'})}
 
+        # Audit log: who did what, on which chapter/target. Emitted as JSON for CloudWatch Logs Insights.
+        _audit = {
+            'audit': True,
+            'actor': caller_email or 'unknown',
+            'action': action,
+            'chapter': chapter,
+            'is_global_admin': is_global_admin,
+        }
+        for _k in ('pr_number', 'pr', 'email', 'member', 'job_id', 'title'):
+            if body.get(_k) not in (None, ''):
+                _audit[_k] = body.get(_k)
+        print('AUDIT ' + json.dumps(_audit, default=str))
+
         if action == 'list-users':
             if is_global_admin and not chapter:
                 # Global admin without chapter filter: show all
