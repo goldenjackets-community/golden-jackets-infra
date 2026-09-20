@@ -284,3 +284,67 @@ def test_list_all_users_swallows_errors():
     gj.POOL_ID = "pool"
     # must not raise; returns whatever was collected (empty)
     assert gj.list_all_users() == []
+
+
+# ---------- audit log for destructive actions (issue #33) ----------
+
+import json as _json
+
+
+def _capture_audit(gj, *args, **kwargs):
+    """Run audit_log and return the parsed JSON record it printed."""
+    import io
+    import contextlib
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        gj.audit_log(*args, **kwargs)
+    line = buf.getvalue().strip()
+    assert line.startswith("AUDIT "), line
+    return _json.loads(line[len("AUDIT "):])
+
+
+def test_audit_log_emits_structured_record():
+    gj = _load_module()
+    rec = _capture_audit(gj, "delete-user", "boss@x.com", "brazil", target="u@x.com")
+    assert rec["audit"] is True
+    assert rec["action"] == "delete-user"
+    assert rec["actor"] == "boss@x.com"
+    assert rec["chapter"] == "brazil"
+    assert rec["target"] == "u@x.com"
+    assert rec["outcome"] == "success"
+    assert "ts" in rec and rec["ts"].endswith("Z")
+
+
+def test_audit_log_denied_outcome_and_extra():
+    gj = _load_module()
+    rec = _capture_audit(gj, "delete-user", "a@brazil.com", "poland",
+                         target="v@poland.com", outcome="denied",
+                         extra={"reason": "cross-chapter"})
+    assert rec["outcome"] == "denied"
+    assert rec["reason"] == "cross-chapter"
+
+
+def test_audit_log_unknown_actor_default():
+    gj = _load_module()
+    rec = _capture_audit(gj, "restore-backup", "", "chile", target="bucket")
+    assert rec["actor"] == "unknown"
+
+
+def test_audit_log_never_raises():
+    gj = _load_module()
+    # passing a non-serializable object in extra must not raise
+    class _X:
+        pass
+    try:
+        gj.audit_log("close-pr", "a@x.com", "uk", extra={"obj": _X()})
+    except Exception as e:  # pragma: no cover
+        raise AssertionError(f"audit_log raised: {e}")
+
+
+def test_audit_log_line_is_single_json():
+    gj = _load_module()
+    rec = _capture_audit(gj, "close-pr", "a@x.com", "uk", target="PR#12",
+                         extra={"reason": "spam", "pr_title": "T"})
+    assert rec["action"] == "close-pr"
+    assert rec["target"] == "PR#12"
+    assert rec["reason"] == "spam"
