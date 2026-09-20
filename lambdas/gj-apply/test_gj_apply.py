@@ -89,3 +89,41 @@ def test_insert_rising_type():
     html = '<html><body><section id="rising"><!-- END_RISING --></section></body></html>'
     out = gj_apply.insert_member_card(html, CARD, 'rising')
     assert CARD in out
+
+
+# ---------- CORS (mirror of #31 fix, applied to the public apply form) ----------
+
+def _event(origin=None):
+    headers = {}
+    if origin is not None:
+        headers['origin'] = origin
+    return {'headers': headers}
+
+
+def test_cors_reflects_allowed_chapter_origin():
+    # REPO_MAP contains goldenjacketsbrazil.com -> brazil repo
+    h = gj_apply._cors_headers(_event('https://goldenjacketsbrazil.com'))
+    assert h['Access-Control-Allow-Origin'] == 'https://goldenjacketsbrazil.com'
+    assert h['Vary'] == 'Origin'
+
+
+def test_cors_blocks_unknown_origin():
+    h = gj_apply._cors_headers(_event('https://evil.com'))
+    assert h['Access-Control-Allow-Origin'] == ''
+
+
+def test_cors_blocks_missing_origin():
+    h = gj_apply._cors_headers(_event(None))
+    assert h['Access-Control-Allow-Origin'] == ''
+
+
+def test_cors_never_wildcard():
+    for origin in ['https://goldenjackets.pl', 'https://evil.com', None]:
+        h = gj_apply._cors_headers(_event(origin))
+        assert h['Access-Control-Allow-Origin'] != '*'
+
+
+def test_cors_source_has_no_wildcard():
+    import inspect
+    src = inspect.getsource(gj_apply._cors_headers) + inspect.getsource(gj_apply._allowed_origins)
+    assert "'*'" not in src
