@@ -348,3 +348,52 @@ def test_audit_log_line_is_single_json():
     assert rec["action"] == "close-pr"
     assert rec["target"] == "PR#12"
     assert rec["reason"] == "spam"
+
+
+# ---------- consistency report (issue #37) ----------
+
+def test_consistency_all_match():
+    gj = _load_module()
+    r = gj.build_consistency_report("brazil", 92, 92, 92)
+    assert r["consistent"] is True
+    assert r["discrepancies"] == []
+    assert r["cards"] == 92 and r["cognito"] == 92 and r["counter"] == 92
+
+
+def test_consistency_cards_vs_cognito_mismatch():
+    gj = _load_module()
+    r = gj.build_consistency_report("poland", cards_count=3, cognito_count=2, counter_count=3)
+    assert r["consistent"] is False
+    assert any("Cognito users (2)" in d and "site cards (3)" in d for d in r["discrepancies"])
+
+
+def test_consistency_all_three_differ():
+    gj = _load_module()
+    r = gj.build_consistency_report("uk", 10, 8, 9)
+    assert r["consistent"] is False
+    # cards!=cognito, cards!=counter, cognito!=counter => 3 discrepancies
+    assert len(r["discrepancies"]) == 3
+
+
+def test_consistency_counter_lags_behind():
+    gj = _load_module()
+    r = gj.build_consistency_report("india", cards_count=47, cognito_count=47, counter_count=45)
+    assert r["consistent"] is False
+    # cards==cognito, but both differ from counter => 2 discrepancies
+    assert len(r["discrepancies"]) == 2
+    assert all("counter (45)" in d for d in r["discrepancies"])
+
+
+def test_consistency_handles_none_and_strings():
+    gj = _load_module()
+    r = gj.build_consistency_report("x", None, "5", 5)
+    # None -> 0, "5" -> 5
+    assert r["cards"] == 0 and r["cognito"] == 5 and r["counter"] == 5
+    assert r["consistent"] is False
+
+
+def test_consistency_diff_sign_in_message():
+    gj = _load_module()
+    r = gj.build_consistency_report("y", cards_count=10, cognito_count=7, counter_count=10)
+    # cards - cognito = +3
+    assert any("+3" in d for d in r["discrepancies"])
