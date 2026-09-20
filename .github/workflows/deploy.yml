@@ -3,13 +3,31 @@ name: Deploy Lambdas
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
 
 permissions:
   id-token: write
   contents: read
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install test deps
+        run: pip install pytest
+      - name: Run gj-admin unit tests
+        run: |
+          cd lambdas/gj-admin
+          python -m pytest -v
+
   deploy-admin:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,6 +47,8 @@ jobs:
           echo "✅ gj-admin deployed"
 
   deploy-apply:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -48,6 +68,8 @@ jobs:
           echo "✅ gj-apply deployed"
 
   deploy-poland-counter:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

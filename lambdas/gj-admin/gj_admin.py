@@ -20,8 +20,45 @@ cognito = boto3.client('cognito-idp', region_name='us-east-1')
 backup = boto3.client('backup', region_name='us-east-1')
 POOL_ID = 'us-east-1_Z0VzzrmIX'
 
-# Global admins can see all chapters
-GLOBAL_ADMINS = ['ricardo.gulias@goldenjacketsbrazil.com', 'erickmancz@gmail.com', 'wagnermazevedo@hotmail.com']
+# Global admins can see all chapters.
+# Configured via GLOBAL_ADMINS env var (comma-separated). Falls back to the
+# historical list so a missing/empty env var never locks admins out in prod.
+_DEFAULT_GLOBAL_ADMINS = 'ricardo.gulias@goldenjacketsbrazil.com,erickmancz@gmail.com,wagnermazevedo@hotmail.com'
+GLOBAL_ADMINS = [
+    e.strip().lower()
+    for e in os.environ.get('GLOBAL_ADMINS', _DEFAULT_GLOBAL_ADMINS).split(',')
+    if e.strip()
+]
+
+# Allowed CORS origins. Configured via ALLOWED_ORIGINS env var (comma-separated,
+# full origins like "https://goldenjacketsbrazil.com"). Falls back to the known
+# chapter domains so a missing env var never blocks the live sites.
+_DEFAULT_ALLOWED_ORIGINS = (
+    'https://goldenjacketsbrazil.com,https://www.goldenjacketsbrazil.com,'
+    'https://goldenjackets.pl,https://www.goldenjackets.pl,'
+    'https://goldenjackets.co.uk,https://www.goldenjackets.co.uk,'
+    'https://goldenjackets.cl,https://www.goldenjackets.cl,'
+    'https://goldenjackets.co,https://www.goldenjackets.co'
+)
+ALLOWED_ORIGINS = {
+    o.strip().lower()
+    for o in os.environ.get('ALLOWED_ORIGINS', _DEFAULT_ALLOWED_ORIGINS).split(',')
+    if o.strip()
+}
+
+
+def _cors_headers(event):
+    """Build CORS headers, reflecting the request Origin only when it is on the
+    allowlist. Unknown origins get no Allow-Origin header (browser blocks them)."""
+    origin = (event.get('headers', {}) or {}).get('origin', '') \
+        or (event.get('headers', {}) or {}).get('Origin', '')
+    allow_origin = origin if origin.lower() in ALLOWED_ORIGINS else ''
+    return {
+        'Access-Control-Allow-Origin': allow_origin,
+        'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Vary': 'Origin',
+    }
 
 def get_caller_email(event):
     claims = event.get('requestContext', {}).get('authorizer', {}).get('jwt', {}).get('claims', {})
@@ -222,11 +259,7 @@ def rebuild_remaining_prs(chapter, merged_pr_number):
             continue
 
 def lambda_handler(event, context):
-    cors = {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type,Authorization',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS'
-    }
+    cors = _cors_headers(event)
 
     if event.get('requestContext', {}).get('http', {}).get('method') == 'OPTIONS':
         return {'statusCode': 200, 'headers': cors, 'body': ''}
@@ -239,7 +272,7 @@ def lambda_handler(event, context):
         # Get caller identity
         caller_email = get_caller_email(event)
         caller_groups = get_user_groups(caller_email)
-        is_global_admin = caller_email in GLOBAL_ADMINS
+        is_global_admin = caller_email.lower() in GLOBAL_ADMINS
 
         # If no chapter specified, detect from origin header or use caller's first group
         if not chapter:
@@ -612,7 +645,7 @@ def lambda_handler(event, context):
             return {"statusCode": 200, "headers": cors, "body": json.dumps(result)}
         elif action == "create-chapter":
             caller = get_caller_email(event)
-            if caller not in GLOBAL_ADMINS:
+            if caller.lower() not in GLOBAL_ADMINS:
                 return {"statusCode": 403, "headers": cors, "body": json.dumps({"error": "Only global admins can create chapters"})}
             result = create_chapter(body)
             return {"statusCode": 200, "headers": cors, "body": json.dumps(result)}
