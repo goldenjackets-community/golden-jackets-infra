@@ -106,3 +106,102 @@ def test_global_admins_no_pii_hardcoded_in_source():
     # the old smell: GLOBAL_ADMINS = ['someone@...']
     assert "GLOBAL_ADMINS = ['" not in src
     assert 'GLOBAL_ADMINS = ["' not in src
+
+
+# ---------- Authorization / chapter isolation (issue #35) ----------
+
+# Deterministic global-admin list for these tests.
+_AUTH_ENV = {"GLOBAL_ADMINS": "boss@global.com"}
+
+
+def test_chapter_admin_cannot_act_on_other_chapter():
+    """A brazil admin must NOT be able to act on the poland chapter."""
+    gj = _load_module(env=_AUTH_ENV)
+    allowed, err = gj.authorize_action(
+        action="list-users", chapter="poland",
+        caller_email="admin@brazil.com", caller_groups=["brazil"],
+    )
+    assert allowed is False
+    assert err == "Access denied to this chapter"
+
+
+def test_chapter_admin_can_act_on_own_chapter():
+    gj = _load_module(env=_AUTH_ENV)
+    allowed, err = gj.authorize_action(
+        action="list-users", chapter="brazil",
+        caller_email="admin@brazil.com", caller_groups=["brazil"],
+    )
+    assert allowed is True
+    assert err is None
+
+
+def test_global_admin_can_act_on_any_chapter():
+    gj = _load_module(env=_AUTH_ENV)
+    for chapter in ["brazil", "poland", "chile", "uk"]:
+        allowed, err = gj.authorize_action(
+            action="list-users", chapter=chapter,
+            caller_email="boss@global.com", caller_groups=[],
+        )
+        assert allowed is True, f"global admin blocked on {chapter}"
+
+
+def test_global_admin_email_is_case_insensitive():
+    gj = _load_module(env=_AUTH_ENV)
+    allowed, _ = gj.authorize_action(
+        action="list-users", chapter="poland",
+        caller_email="BOSS@GLOBAL.COM", caller_groups=[],
+    )
+    assert allowed is True
+
+
+def test_restore_backup_denied_for_chapter_admin():
+    """restore-backup is global-admin only, even on the admin's own chapter."""
+    gj = _load_module(env=_AUTH_ENV)
+    allowed, err = gj.authorize_action(
+        action="restore-backup", chapter="brazil",
+        caller_email="admin@brazil.com", caller_groups=["brazil"],
+    )
+    assert allowed is False
+    assert err == "Only global admins can restore backups"
+
+
+def test_restore_backup_allowed_for_global_admin():
+    gj = _load_module(env=_AUTH_ENV)
+    allowed, err = gj.authorize_action(
+        action="restore-backup", chapter="brazil",
+        caller_email="boss@global.com", caller_groups=[],
+    )
+    assert allowed is True
+    assert err is None
+
+
+def test_delete_user_denied_when_target_in_other_chapter():
+    """A brazil admin cannot delete a user that belongs only to poland."""
+    gj = _load_module(env=_AUTH_ENV)
+    allowed, err = gj.authorize_action(
+        action="delete-user", chapter="brazil",
+        caller_email="admin@brazil.com", caller_groups=["brazil"],
+        target_groups=["poland"],
+    )
+    assert allowed is False
+    assert err == "Cannot delete user from another chapter"
+
+
+def test_delete_user_allowed_when_target_in_own_chapter():
+    gj = _load_module(env=_AUTH_ENV)
+    allowed, err = gj.authorize_action(
+        action="delete-user", chapter="brazil",
+        caller_email="admin@brazil.com", caller_groups=["brazil"],
+        target_groups=["brazil"],
+    )
+    assert allowed is True
+
+
+def test_skip_chapter_action_allowed_without_membership():
+    """Chapter-agnostic actions (e.g. list-jobs) don't require chapter membership."""
+    gj = _load_module(env=_AUTH_ENV)
+    allowed, err = gj.authorize_action(
+        action="list-jobs", chapter="poland",
+        caller_email="admin@brazil.com", caller_groups=["brazil"],
+    )
+    assert allowed is True
