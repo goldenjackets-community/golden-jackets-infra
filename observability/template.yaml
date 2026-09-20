@@ -330,9 +330,9 @@ Resources:
       Threshold: 1
       ComparisonOperator: LessThanThreshold
       AlarmActions:
-        - !Ref AlertTopic
+        - arn:aws:sns:us-east-1:800712212925:goldenjackets-alerts
       OKActions:
-        - !Ref AlertTopic
+        - arn:aws:sns:us-east-1:800712212925:goldenjackets-alerts
       TreatMissingData: breaching
 
   AlarmBrazil:
@@ -351,9 +351,9 @@ Resources:
       Threshold: 1
       ComparisonOperator: LessThanThreshold
       AlarmActions:
-        - !Ref AlertTopic
+        - arn:aws:sns:us-east-1:800712212925:gj-brazil-alerts
       OKActions:
-        - !Ref AlertTopic
+        - arn:aws:sns:us-east-1:800712212925:gj-brazil-alerts
       TreatMissingData: breaching
 
   AlarmPoland:
@@ -372,9 +372,9 @@ Resources:
       Threshold: 1
       ComparisonOperator: LessThanThreshold
       AlarmActions:
-        - !Ref AlertTopic
+        - arn:aws:sns:us-east-1:800712212925:gj-poland-alerts
       OKActions:
-        - !Ref AlertTopic
+        - arn:aws:sns:us-east-1:800712212925:gj-poland-alerts
       TreatMissingData: breaching
 
   AlarmUK:
@@ -393,9 +393,9 @@ Resources:
       Threshold: 1
       ComparisonOperator: LessThanThreshold
       AlarmActions:
-        - !Ref AlertTopic
+        - arn:aws:sns:us-east-1:800712212925:gj-uk-alerts
       OKActions:
-        - !Ref AlertTopic
+        - arn:aws:sns:us-east-1:800712212925:gj-uk-alerts
       TreatMissingData: breaching
 
   AlarmChile:
@@ -414,9 +414,9 @@ Resources:
       Threshold: 1
       ComparisonOperator: LessThanThreshold
       AlarmActions:
-        - !Ref AlertTopic
+        - arn:aws:sns:us-east-1:800712212925:gj-chile-alerts
       OKActions:
-        - !Ref AlertTopic
+        - arn:aws:sns:us-east-1:800712212925:gj-chile-alerts
       TreatMissingData: breaching
 
   AlarmIndia:
@@ -435,9 +435,9 @@ Resources:
       Threshold: 1
       ComparisonOperator: LessThanThreshold
       AlarmActions:
-        - !Ref AlertTopic
+        - arn:aws:sns:us-east-1:800712212925:gj-india-alerts
       OKActions:
-        - !Ref AlertTopic
+        - arn:aws:sns:us-east-1:800712212925:gj-india-alerts
       TreatMissingData: breaching
 
   AlarmFrance:
@@ -456,9 +456,9 @@ Resources:
       Threshold: 1
       ComparisonOperator: LessThanThreshold
       AlarmActions:
-        - !Ref AlertTopic
+        - arn:aws:sns:us-east-1:800712212925:gj-france-alerts
       OKActions:
-        - !Ref AlertTopic
+        - arn:aws:sns:us-east-1:800712212925:gj-france-alerts
       TreatMissingData: breaching
 
   AlarmUSA:
@@ -477,9 +477,9 @@ Resources:
       Threshold: 1
       ComparisonOperator: LessThanThreshold
       AlarmActions:
-        - !Ref AlertTopic
+        - arn:aws:sns:us-east-1:800712212925:gj-usa-alerts
       OKActions:
-        - !Ref AlertTopic
+        - arn:aws:sns:us-east-1:800712212925:gj-usa-alerts
       TreatMissingData: breaching
 
   AlarmItaly:
@@ -498,9 +498,9 @@ Resources:
       Threshold: 1
       ComparisonOperator: LessThanThreshold
       AlarmActions:
-        - !Ref AlertTopic
+        - arn:aws:sns:us-east-1:800712212925:gj-italy-alerts
       OKActions:
-        - !Ref AlertTopic
+        - arn:aws:sns:us-east-1:800712212925:gj-italy-alerts
       TreatMissingData: breaching
 
   AlarmPeru:
@@ -519,9 +519,9 @@ Resources:
       Threshold: 1
       ComparisonOperator: LessThanThreshold
       AlarmActions:
-        - !Ref AlertTopic
+        - arn:aws:sns:us-east-1:800712212925:gj-peru-alerts
       OKActions:
-        - !Ref AlertTopic
+        - arn:aws:sns:us-east-1:800712212925:gj-peru-alerts
       TreatMissingData: breaching
 
   AlarmIsrael:
@@ -540,9 +540,9 @@ Resources:
       Threshold: 1
       ComparisonOperator: LessThanThreshold
       AlarmActions:
-        - !Ref AlertTopic
+        - arn:aws:sns:us-east-1:800712212925:goldenjackets-alerts
       OKActions:
-        - !Ref AlertTopic
+        - arn:aws:sns:us-east-1:800712212925:goldenjackets-alerts
       TreatMissingData: breaching
 
   AlarmBelarus:
@@ -561,9 +561,9 @@ Resources:
       Threshold: 1
       ComparisonOperator: LessThanThreshold
       AlarmActions:
-        - !Ref AlertTopic
+        - arn:aws:sns:us-east-1:800712212925:goldenjackets-alerts
       OKActions:
-        - !Ref AlertTopic
+        - arn:aws:sns:us-east-1:800712212925:goldenjackets-alerts
       TreatMissingData: breaching
 
   AlarmEcuador:
@@ -582,9 +582,9 @@ Resources:
       Threshold: 1
       ComparisonOperator: LessThanThreshold
       AlarmActions:
-        - !Ref AlertTopic
+        - arn:aws:sns:us-east-1:800712212925:goldenjackets-alerts
       OKActions:
-        - !Ref AlertTopic
+        - arn:aws:sns:us-east-1:800712212925:goldenjackets-alerts
       TreatMissingData: breaching
 
   AlarmColombia:
@@ -603,9 +603,9 @@ Resources:
       Threshold: 1
       ComparisonOperator: LessThanThreshold
       AlarmActions:
-        - !Ref AlertTopic
+        - arn:aws:sns:us-east-1:800712212925:gj-colombia-alerts
       OKActions:
-        - !Ref AlertTopic
+        - arn:aws:sns:us-east-1:800712212925:gj-colombia-alerts
       TreatMissingData: breaching
 
   AlarmBelgium:
@@ -624,9 +624,9 @@ Resources:
       Threshold: 1
       ComparisonOperator: LessThanThreshold
       AlarmActions:
-        - !Ref AlertTopic
+        - arn:aws:sns:us-east-1:800712212925:goldenjackets-alerts
       OKActions:
-        - !Ref AlertTopic
+        - arn:aws:sns:us-east-1:800712212925:goldenjackets-alerts
       TreatMissingData: breaching
 
   AlarmUAE:
@@ -645,9 +645,9 @@ Resources:
       Threshold: 1
       ComparisonOperator: LessThanThreshold
       AlarmActions:
-        - !Ref AlertTopic
+        - arn:aws:sns:us-east-1:800712212925:goldenjackets-alerts
       OKActions:
-        - !Ref AlertTopic
+        - arn:aws:sns:us-east-1:800712212925:goldenjackets-alerts
       TreatMissingData: breaching
 
   # --- Domain & Certificate Expiration Monitor (Lambda) ---
