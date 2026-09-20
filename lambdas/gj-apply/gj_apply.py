@@ -154,6 +154,81 @@ def build_card(name, city, state, date, linkedin, member_type, photo_path, card_
         </div>
       </div>"""
 
+def insert_member_card(index_content, card, member_type):
+    """Insert a member card into index.html for the given member type.
+
+    Returns the modified index_content. Uses marker-based insertion first,
+    then a section-based regex fallback, then a universal </body>/append
+    fallback (BUG-1 guard) so the card is ALWAYS inserted when possible.
+
+    Raises ValueError if the card could not be inserted at all, so the
+    caller can abort instead of committing an empty diff (empty PR).
+    """
+    import re
+    if member_type == 'golden' or member_type == '':
+        # Primary: use END_GOLDEN_JACKETS marker (exists in all chapter sites)
+        if '<!-- END_GOLDEN_JACKETS -->' in index_content:
+            index_content = index_content.replace('<!-- END_GOLDEN_JACKETS -->', card + '\n<!-- END_GOLDEN_JACKETS -->', 1)
+        else:
+            # Fallback: find closing </div>\n</section> after members-grid
+            m = re.search(r'(    </div>\s*\n  </section>\s*\n(?:<!-- Alumni|<!-- Challengers))', index_content)
+            if m:
+                index_content = index_content.replace(m.group(1), card + '\n' + m.group(1), 1)
+    elif member_type == 'alumni':
+        # Insert before closing of alumni section grid
+        m = re.search(r'(<!-- Alumni cards go here -->|<!-- END_ALUMNI -->)', index_content)
+        if m:
+            index_content = index_content.replace(m.group(1), card + '\n      ' + m.group(1), 1)
+        else:
+            # Find alumni section's closing </div>\n  </section>
+            parts = index_content.split('id="alumni"')
+            if len(parts) > 1:
+                alumni_part = parts[1]
+                m2 = re.search(r'(    </div>\s*\n  </section>)', alumni_part)
+                if m2:
+                    index_content = index_content.replace('id="alumni"' + alumni_part[:m2.start()] + m2.group(1), 'id="alumni"' + alumni_part[:m2.start()] + card + '\n' + m2.group(1), 1)
+    elif 'rising' in member_type:
+        # Rising - insert at END of queue (before END_RISING marker)
+        m = re.search(r'(<!-- END_RISING -->)', index_content)
+        if m:
+            index_content = index_content.replace(m.group(1), card + '\n\n' + m.group(1), 1)
+        else:
+            parts = index_content.split('id="rising"')
+            if len(parts) > 1:
+                rising_part = parts[1]
+                m2 = re.search(r'(    </div>\s*\n  </section>)', rising_part)
+                if m2:
+                    index_content = index_content.replace('id="rising"' + rising_part[:m2.start()] + m2.group(1), 'id="rising"' + rising_part[:m2.start()] + card + '\n' + m2.group(1), 1)
+    else:
+        # Challengers - insert at END of queue (before END marker)
+        m = re.search(r'(<!-- END_CHALLENGERS -->)', index_content)
+        if m:
+            index_content = index_content.replace(m.group(1), card + '\n' + m.group(1), 1)
+        else:
+            parts = index_content.split('id="challengers"')
+            if len(parts) > 1:
+                chall_part = parts[1]
+                m2 = re.search(r'(    </div>\s*\n  </section>)', chall_part)
+                if m2:
+                    index_content = index_content.replace('id="challengers"' + chall_part[:m2.start()] + m2.group(1), 'id="challengers"' + chall_part[:m2.start()] + card + '\n' + m2.group(1), 1)
+
+    # BUG-1 guard: ensure the card was actually inserted before committing.
+    # If neither the marker nor the section-based fallback matched, index_content
+    # is unchanged and we'd otherwise commit an empty diff -> PR with no card.
+    if card not in index_content:
+        # Universal last-resort fallback: insert before the closing </body>,
+        # or append to the end of the document if there is no </body>.
+        if '</body>' in index_content:
+            index_content = index_content.replace('</body>', card + '\n</body>', 1)
+        else:
+            index_content = index_content + '\n' + card + '\n'
+
+    # Hard stop: if the card STILL isn't present, refuse to proceed.
+    if card not in index_content:
+        raise ValueError('card insertion failed: no insertion point found in index.html')
+
+    return index_content
+
 def lambda_handler(event, context):
     cors = {
         'Access-Control-Allow-Origin': '*',
@@ -314,52 +389,17 @@ _Rebuilt automatically after PR merge to avoid conflicts._"""
 
             card = build_card(name, city, state, date, linkedin, member_type, photo_path, card_number)
 
-            if member_type == 'golden' or member_type == '':
-                # Primary: use END_GOLDEN_JACKETS marker (exists in all chapter sites)
-                if '<!-- END_GOLDEN_JACKETS -->' in index_content:
-                    index_content = index_content.replace('<!-- END_GOLDEN_JACKETS -->', card + '\n<!-- END_GOLDEN_JACKETS -->', 1)
-                else:
-                    # Fallback: find closing </div>\n</section> after members-grid
-                    m = re.search(r'(    </div>\s*\n  </section>\s*\n(?:<!-- Alumni|<!-- Challengers))', index_content)
-                    if m:
-                        index_content = index_content.replace(m.group(1), card + '\n' + m.group(1), 1)
-            elif member_type == 'alumni':
-                # Insert before closing of alumni section grid
-                m = re.search(r'(<!-- Alumni cards go here -->|<!-- END_ALUMNI -->)', index_content)
-                if m:
-                    index_content = index_content.replace(m.group(1), card + '\n      ' + m.group(1), 1)
-                else:
-                    # Find alumni section's closing </div>\n  </section>
-                    parts = index_content.split('id="alumni"')
-                    if len(parts) > 1:
-                        alumni_part = parts[1]
-                        m2 = re.search(r'(    </div>\s*\n  </section>)', alumni_part)
-                        if m2:
-                            index_content = index_content.replace('id="alumni"' + alumni_part[:m2.start()] + m2.group(1), 'id="alumni"' + alumni_part[:m2.start()] + card + '\n' + m2.group(1), 1)
-            elif 'rising' in member_type:
-                # Rising - insert at END of queue (before END_RISING marker)
-                m = re.search(r'(<!-- END_RISING -->)', index_content)
-                if m:
-                    index_content = index_content.replace(m.group(1), card + '\n\n' + m.group(1), 1)
-                else:
-                    parts = index_content.split('id="rising"')
-                    if len(parts) > 1:
-                        rising_part = parts[1]
-                        m2 = re.search(r'(    </div>\s*\n  </section>)', rising_part)
-                        if m2:
-                            index_content = index_content.replace('id="rising"' + rising_part[:m2.start()] + m2.group(1), 'id="rising"' + rising_part[:m2.start()] + card + '\n' + m2.group(1), 1)
-            else:
-                # Challengers - insert at END of queue (before END marker)
-                m = re.search(r'(<!-- END_CHALLENGERS -->)', index_content)
-                if m:
-                    index_content = index_content.replace(m.group(1), card + '\n' + m.group(1), 1)
-                else:
-                    parts = index_content.split('id="challengers"')
-                    if len(parts) > 1:
-                        chall_part = parts[1]
-                        m2 = re.search(r'(    </div>\s*\n  </section>)', chall_part)
-                        if m2:
-                            index_content = index_content.replace('id="challengers"' + chall_part[:m2.start()] + m2.group(1), 'id="challengers"' + chall_part[:m2.start()] + card + '\n' + m2.group(1), 1)
+            # BUG-1: insert card via helper that guarantees insertion or raises.
+            # This prevents committing an empty diff (a PR with no card).
+            try:
+                index_content = insert_member_card(index_content, card, member_type)
+            except ValueError as e:
+                print(f"BUG-1: {e} for member '{name}' (type={member_type})")
+                return {
+                    'statusCode': 500,
+                    'headers': cors,
+                    'body': json.dumps({'error': 'Could not insert member card into index.html (no insertion point found). PR was NOT created; please contact an admin.'})
+                }
 
             put_file('index.html', index_content, f'Add member card: {name}', branch, index_sha, repo=REPO)
 
