@@ -9,7 +9,22 @@ permissions:
   contents: read
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install test deps
+        run: pip install pytest
+      - name: Run gj-admin unit tests
+        run: |
+          cd lambdas/gj-admin
+          python -m pytest -v
+
   deploy-admin:
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,6 +44,7 @@ jobs:
           echo "✅ gj-admin deployed"
 
   deploy-apply:
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -48,6 +64,7 @@ jobs:
           echo "✅ gj-apply deployed"
 
   deploy-poland-counter:
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
