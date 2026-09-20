@@ -24,6 +24,10 @@ jobs:
         run: |
           cd lambdas/gj-admin
           python -m pytest -v
+      - name: Run gj-apply unit tests
+        run: |
+          cd lambdas/gj-apply
+          python -m pytest -v
 
   deploy-admin:
     needs: test
