@@ -205,3 +205,82 @@ def test_skip_chapter_action_allowed_without_membership():
         caller_email="admin@brazil.com", caller_groups=["brazil"],
     )
     assert allowed is True
+
+
+# ---------- pagination consistency (issue #34) ----------
+
+import datetime as _dt
+
+
+class _FakeCognitoPaged:
+    """Fake Cognito client that returns users across TWO pages, to prove the
+    caller follows the pagination token instead of stopping at page one."""
+    def __init__(self, token_key, page1, page2):
+        self._token_key = token_key      # 'PaginationToken' or 'NextToken'
+        self._page1 = page1
+        self._page2 = page2
+
+    def _mk(self, emails):
+        return [{
+            "Attributes": [{"Name": "email", "Value": e}],
+            "UserStatus": "CONFIRMED",
+            "UserCreateDate": _dt.datetime(2026, 1, 1),
+        } for e in emails]
+
+    def list_users(self, **params):
+        if params.get("PaginationToken") == "PAGE2":
+            return {"Users": self._mk(self._page2)}
+        return {"Users": self._mk(self._page1), "PaginationToken": "PAGE2"}
+
+    def list_users_in_group(self, **params):
+        if params.get("NextToken") == "PAGE2":
+            return {"Users": self._mk(self._page2)}
+        return {"Users": self._mk(self._page1), "NextToken": "PAGE2"}
+
+
+def test_list_all_users_follows_pagination_token():
+    gj = _load_module()
+    gj.cognito = _FakeCognitoPaged("PaginationToken",
+                                   ["a@x.com", "b@x.com"], ["c@x.com"])
+    gj.POOL_ID = "pool"
+    users = gj.list_all_users()
+    emails = [u["email"] for u in users]
+    assert emails == ["a@x.com", "b@x.com", "c@x.com"], emails  # both pages
+
+
+def test_get_users_in_group_follows_next_token():
+    gj = _load_module()
+    gj.cognito = _FakeCognitoPaged("NextToken",
+                                   ["one@x.com"], ["two@x.com", "three@x.com"])
+    gj.POOL_ID = "pool"
+    users = gj.get_users_in_group("brazil")
+    emails = [u["email"] for u in users]
+    assert emails == ["one@x.com", "two@x.com", "three@x.com"], emails
+
+
+def test_list_all_users_single_page_no_token():
+    gj = _load_module()
+
+    class _OnePage:
+        def list_users(self, **p):
+            return {"Users": [{
+                "Attributes": [{"Name": "email", "Value": "solo@x.com"}],
+                "UserStatus": "CONFIRMED",
+                "UserCreateDate": _dt.datetime(2026, 1, 1),
+            }]}  # no PaginationToken -> stop after one page
+    gj.cognito = _OnePage()
+    gj.POOL_ID = "pool"
+    users = gj.list_all_users()
+    assert [u["email"] for u in users] == ["solo@x.com"]
+
+
+def test_list_all_users_swallows_errors():
+    gj = _load_module()
+
+    class _Boom:
+        def list_users(self, **p):
+            raise RuntimeError("cognito down")
+    gj.cognito = _Boom()
+    gj.POOL_ID = "pool"
+    # must not raise; returns whatever was collected (empty)
+    assert gj.list_all_users() == []
