@@ -132,6 +132,34 @@ def get_users_in_group(group):
     return users
 
 
+def list_all_users():
+    """List every user in the pool, paginating through all pages.
+
+    Mirrors get_users_in_group's pagination so the global (all-chapters) view is
+    consistent and never truncated at the first page (#34). Cognito's list_users
+    caps a page at 60 and returns a PaginationToken for the next page.
+    """
+    users = []
+    try:
+        params = {'UserPoolId': POOL_ID, 'Limit': 60}
+        while True:
+            resp = cognito.list_users(**params)
+            for u in resp['Users']:
+                email = next((a['Value'] for a in u['Attributes'] if a['Name'] == 'email'), '')
+                users.append({
+                    'email': email,
+                    'status': u['UserStatus'],
+                    'created': u['UserCreateDate'].isoformat()
+                })
+            token = resp.get('PaginationToken')
+            if not token:
+                break
+            params['PaginationToken'] = token
+    except Exception:
+        pass
+    return users
+
+
 # --- PR Management ---
 
 def github_api(method, path, body=None):
@@ -331,16 +359,8 @@ def lambda_handler(event, context):
 
         if action == 'list-users':
             if is_global_admin and not chapter:
-                # Global admin without chapter filter: show all
-                users = []
-                resp = cognito.list_users(UserPoolId=POOL_ID)
-                for u in resp['Users']:
-                    email = next((a['Value'] for a in u['Attributes'] if a['Name'] == 'email'), '')
-                    users.append({
-                        'email': email,
-                        'status': u['UserStatus'],
-                        'created': u['UserCreateDate'].isoformat()
-                    })
+                # Global admin without chapter filter: show all (paginated, #34)
+                users = list_all_users()
             else:
                 users = get_users_in_group(chapter)
             return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'users': users, 'chapter': chapter})}
