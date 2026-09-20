@@ -229,6 +229,27 @@ def insert_member_card(index_content, card, member_type):
 
     return index_content
 
+def normalize_state(state):
+    """Normalize the member 'state' field from the apply form (issue #36).
+
+    The value ends up as data-state="..." on the card and drives the map/region
+    filter, so it must be a clean, non-empty code. We:
+      * trim surrounding whitespace,
+      * collapse internal whitespace,
+      * uppercase it (states are codes like SP, RJ, ENG, SC),
+    and reject empty values or the literal 'Other' placeholder.
+
+    Returns the normalized string, or raises ValueError for invalid input.
+    """
+    import re as _re
+    s = (state or '').strip()
+    s = _re.sub(r'\s+', ' ', s)
+    if not s:
+        raise ValueError("state is required")
+    if s.strip().lower() in ('other', 'others', 'n/a', 'na', 'none', '-'):
+        raise ValueError("state cannot be 'Other'; please select a valid state/region")
+    return s.upper()
+
 def _allowed_origins():
     """CORS allowlist for the public apply form.
 
@@ -272,7 +293,11 @@ def lambda_handler(event, context):
         body = json.loads(event.get('body', '{}'))
         name = body['name']
         city = body['city']
-        state = body['state']
+        # Normalize + validate state (issue #36: impedir 'Other'/vazio).
+        try:
+            state = normalize_state(body['state'])
+        except ValueError as e:
+            return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': str(e)})}
 
         # Auto-append country to city based on chapter origin
         COUNTRY_APPEND = {
