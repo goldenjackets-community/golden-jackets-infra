@@ -29,3 +29,12 @@ Push to `main` → GitHub Actions deploys Lambda automatically.
 ## 🤖 Built With AI
 
 This project was entirely built using **Kiro CLI** (powered by Claude, Anthropic) — from Lambda functions to IAM policies, CI/CD workflows, and operational guides.
+
+## 📋 Project Management & Governance
+
+This community runs on an **AI-Agile Spec-Driven** framework (GitHub Issues + Projects + Milestones + Labels). Start here:
+
+- **[PROJECT-MANAGEMENT.md](./PROJECT-MANAGEMENT.md)** — how the board, issues, phases and labels work.
+- **[GOVERNANCE.md](./GOVERNANCE.md)** — roles (Core Team, Contributors, Chapter Leads), RACI and elections.
+- **[CONTRIBUTING.md](./CONTRIBUTING.md)** — how to pick up a task, open an issue and submit a PR.
+- **[Community Backlog board](https://github.com/orgs/goldenjackets-community/projects/2)** — full platform & chapters roadmap.
