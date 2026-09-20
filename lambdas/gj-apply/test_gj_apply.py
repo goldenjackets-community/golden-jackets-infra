@@ -127,3 +127,40 @@ def test_cors_source_has_no_wildcard():
     import inspect
     src = inspect.getsource(gj_apply._cors_headers) + inspect.getsource(gj_apply._allowed_origins)
     assert "'*'" not in src
+
+
+# ---------- state normalization (issue #36) ----------
+
+import pytest
+
+
+def test_normalize_state_trims_and_uppercases():
+    assert gj_apply.normalize_state('  sp ') == 'SP'
+    assert gj_apply.normalize_state('rj') == 'RJ'
+
+
+def test_normalize_state_collapses_internal_whitespace():
+    assert gj_apply.normalize_state('sao  paulo') == 'SAO PAULO'
+
+
+def test_normalize_state_rejects_other():
+    for bad in ['Other', 'other', 'OTHER', 'others']:
+        with pytest.raises(ValueError):
+            gj_apply.normalize_state(bad)
+
+
+def test_normalize_state_rejects_empty():
+    for bad in ['', '   ', None]:
+        with pytest.raises(ValueError):
+            gj_apply.normalize_state(bad)
+
+
+def test_normalize_state_rejects_placeholders():
+    for bad in ['N/A', 'na', 'none', '-']:
+        with pytest.raises(ValueError):
+            gj_apply.normalize_state(bad)
+
+
+def test_normalize_state_accepts_valid_codes():
+    for good in ['SP', 'ENG', 'SC', 'CA']:
+        assert gj_apply.normalize_state(good) == good
