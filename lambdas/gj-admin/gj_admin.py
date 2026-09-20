@@ -60,6 +60,46 @@ def _cors_headers(event):
         'Vary': 'Origin',
     }
 
+# Actions that don't operate on a specific chapter's members/backups and so
+# skip the chapter-ownership check.
+SKIP_CHAPTER_ACTIONS = [
+    'create-chapter', 'chapter-status', 'post-job', 'list-jobs', 'delete-job',
+    'apply-job', 'submit-article', 'suggest-topic',
+]
+
+def authorize_action(action, chapter, caller_email, caller_groups, target_groups=None):
+    """Central authorization decision for gj-admin (issue #35).
+
+    Enforces chapter isolation:
+      * Global admins (email in GLOBAL_ADMINS) may act on any chapter.
+      * A chapter admin may only act on chapters they belong to (caller_groups).
+      * 'delete-user' additionally requires the TARGET user to belong to the
+        caller's chapter (target_groups), unless the caller is a global admin.
+      * 'restore-backup' is restricted to global admins only.
+
+    Returns (allowed: bool, error_message: str|None). Pure function: no AWS,
+    no I/O — safe to unit test.
+    """
+    is_global_admin = (caller_email or '').lower() in GLOBAL_ADMINS
+    caller_groups = caller_groups or []
+
+    # restore-backup: global admins only, regardless of chapter membership.
+    if action == 'restore-backup' and not is_global_admin:
+        return False, 'Only global admins can restore backups'
+
+    # Chapter-ownership gate (skipped for chapter-agnostic actions).
+    if not is_global_admin and action not in SKIP_CHAPTER_ACTIONS:
+        if chapter not in caller_groups:
+            return False, 'Access denied to this chapter'
+
+    # delete-user: the target must belong to the caller's chapter.
+    if action == 'delete-user' and not is_global_admin:
+        target_groups = target_groups or []
+        if chapter not in target_groups:
+            return False, 'Cannot delete user from another chapter'
+
+    return True, None
+
 def get_caller_email(event):
     claims = event.get('requestContext', {}).get('authorizer', {}).get('jwt', {}).get('claims', {})
     return claims.get('email', '')
@@ -283,11 +323,11 @@ def lambda_handler(event, context):
         if not chapter and caller_groups:
             chapter = caller_groups[0]
 
-        # Verify caller has access to requested chapter
-        # Skip chapter check for actions that don't need it
-        skip_chapter_actions = ['create-chapter', 'chapter-status', 'post-job', 'list-jobs', 'delete-job', 'apply-job', 'submit-article', 'suggest-topic']
-        if not is_global_admin and chapter not in caller_groups and action not in skip_chapter_actions:
-            return {'statusCode': 403, 'headers': cors, 'body': json.dumps({'error': 'Access denied to this chapter'})}
+        # Verify caller has access to requested chapter (issue #35: chapter isolation).
+        # Uses the central authorize_action() decision.
+        allowed, err = authorize_action(action, chapter, caller_email, caller_groups)
+        if not allowed:
+            return {'statusCode': 403, 'headers': cors, 'body': json.dumps({'error': err})}
 
         if action == 'list-users':
             if is_global_admin and not chapter:
@@ -324,10 +364,11 @@ def lambda_handler(event, context):
             email = body.get('email', '')
             if not email:
                 return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'email required'})}
-            # Verify user belongs to caller's chapter
+            # Verify user belongs to caller's chapter (issue #35).
             target_groups = get_user_groups(email)
-            if not is_global_admin and chapter not in target_groups:
-                return {'statusCode': 403, 'headers': cors, 'body': json.dumps({'error': 'Cannot delete user from another chapter'})}
+            allowed, err = authorize_action('delete-user', chapter, caller_email, caller_groups, target_groups)
+            if not allowed:
+                return {'statusCode': 403, 'headers': cors, 'body': json.dumps({'error': err})}
             cognito.admin_delete_user(UserPoolId=POOL_ID, Username=email)
             return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'message': f'User {email} deleted'})}
 
@@ -361,8 +402,9 @@ def lambda_handler(event, context):
             return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'jobs': result})}
 
         elif action == 'restore-backup':
-            if not is_global_admin:
-                return {'statusCode': 403, 'headers': cors, 'body': json.dumps({'error': 'Only global admins can restore backups'})}
+            allowed, err = authorize_action('restore-backup', chapter, caller_email, caller_groups)
+            if not allowed:
+                return {'statusCode': 403, 'headers': cors, 'body': json.dumps({'error': err})}
             vault = {'poland': 'gj-poland-backups', 'uk': 'gj-uk-backups', 'chile': 'gj-chile-backups'}.get(chapter, 'gj-site-backups')
             bucket = 'goldenjackets.pl' if chapter == 'poland' else 'goldenjackets.cl' if chapter == 'chile' else 'www.goldenjacketsbrazil.com'
             jobs = backup.list_backup_jobs(MaxResults=1, ByBackupVaultName=vault, ByState='COMPLETED')
