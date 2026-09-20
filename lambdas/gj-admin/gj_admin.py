@@ -5,6 +5,30 @@ import urllib.request
 import os
 import time
 
+
+def audit_log(action, actor, chapter='', target='', outcome='success', extra=None):
+    """Emit a structured audit record for destructive admin actions (#33).
+
+    Written as a single-line JSON to stdout so it lands in CloudWatch Logs and
+    is queryable via Logs Insights (filter on audit=true / action / actor).
+    Never raises — auditing must not break the action it records.
+    """
+    try:
+        record = {
+            'audit': True,
+            'ts': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
+            'action': action,
+            'actor': actor or 'unknown',
+            'chapter': chapter or '',
+            'target': target or '',
+            'outcome': outcome,
+        }
+        if extra:
+            record.update(extra)
+        print('AUDIT ' + json.dumps(record, sort_keys=True))
+    except Exception:
+        pass
+
 def _get_github_token():
     """Get GitHub token — prefers App installation token, falls back to env var."""
     try:
@@ -388,8 +412,10 @@ def lambda_handler(event, context):
             target_groups = get_user_groups(email)
             allowed, err = authorize_action('delete-user', chapter, caller_email, caller_groups, target_groups)
             if not allowed:
+                audit_log('delete-user', caller_email, chapter, target=email, outcome='denied', extra={'reason': err})
                 return {'statusCode': 403, 'headers': cors, 'body': json.dumps({'error': err})}
             cognito.admin_delete_user(UserPoolId=POOL_ID, Username=email)
+            audit_log('delete-user', caller_email, chapter, target=email)
             return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'message': f'User {email} deleted'})}
 
         elif action == 'resend-pending':
@@ -436,6 +462,7 @@ def lambda_handler(event, context):
                 IamRoleArn='arn:aws:iam::800712212925:role/gj-backup-role',
                 Metadata={'NewBucketName': bucket, 'Encrypted': 'false'}
             )
+            audit_log('restore-backup', caller_email, chapter, target=bucket, extra={'recovery_point': rp})
             return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'message': 'Restore started from latest backup'})}
 
         elif action == 'submit-article':
@@ -632,7 +659,9 @@ def lambda_handler(event, context):
             pr_title = pr_info.get('title', f'PR #{pr_number}')
             result = close_pr(chapter, pr_number)
             if 'error' in result:
+                audit_log('close-pr', caller_email, chapter, target=f'PR#{pr_number}', outcome='error', extra={'reason': reason})
                 return {'statusCode': 400, 'headers': cors, 'body': json.dumps(result)}
+            audit_log('close-pr', caller_email, chapter, target=f'PR#{pr_number}', extra={'reason': reason, 'pr_title': pr_title})
             sns = boto3.client('sns', region_name='us-east-1')
             sns.publish(TopicArn='arn:aws:sns:us-east-1:800712212925:goldenjackets-alerts', Subject=trunc_subject(f'❌ Article Rejected: {pr_title}'), Message=f'Article: {pr_title}\nRejected by: {caller_email}\nReason: {reason}\n\nPlease modify and resubmit if appropriate.')
             return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'message': f'PR #{pr_number} rejected. Reason sent to author.'})}
