@@ -1056,12 +1056,11 @@ def get_chapter_status(code):
 
 # --- AO VIVO banner toggle (manual live control) ---
 
+# AO VIVO banner: rollout brazil-first. Só o brazil tem o front-end da faixa
+# (flag `var LIVE_ON` no index.html) e usa branch `main`. Os demais chapters
+# entram depois, junto com o front-end e o mapeamento de branch (main vs master).
 _LIVE_REPO_MAP = {
-    'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland',
-    'uk': 'golden-jackets-uk', 'chile': 'golden-jackets-chile',
-    'india': 'golden-jackets-india', 'france': 'golden-jackets-france',
-    'usa': 'golden-jackets-usa', 'italy': 'golden-jackets-italy',
-    'ecuador': 'golden-jackets-ecuador', 'colombia': 'golden-jackets-colombia'
+    'brazil': 'golden-jackets-brazil',
 }
 
 
