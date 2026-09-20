@@ -184,6 +184,46 @@ def list_all_users():
     return users
 
 
+def build_consistency_report(chapter, cards_count, cognito_count, counter_count):
+    """Compare a chapter's three member counts and report discrepancies (#37).
+
+    Sources:
+      * cards_count   — member cards live on the chapter site (index.html)
+      * cognito_count — users in the chapter's Cognito group
+      * counter_count — chapters[].members in the global data.json
+
+    Pure function (no I/O) so it's unit-testable. Returns a dict with the three
+    counts, a boolean `consistent`, and a list of human-readable `discrepancies`.
+    """
+    cards = int(cards_count or 0)
+    cognito = int(cognito_count or 0)
+    counter = int(counter_count or 0)
+    discrepancies = []
+    if cards != cognito:
+        discrepancies.append(
+            f'site cards ({cards}) != Cognito users ({cognito}) '
+            f'[diff {cards - cognito:+d}]'
+        )
+    if cards != counter:
+        discrepancies.append(
+            f'site cards ({cards}) != data.json counter ({counter}) '
+            f'[diff {cards - counter:+d}]'
+        )
+    if cognito != counter:
+        discrepancies.append(
+            f'Cognito users ({cognito}) != data.json counter ({counter}) '
+            f'[diff {cognito - counter:+d}]'
+        )
+    return {
+        'chapter': chapter,
+        'cards': cards,
+        'cognito': cognito,
+        'counter': counter,
+        'consistent': len(discrepancies) == 0,
+        'discrepancies': discrepancies,
+    }
+
+
 # --- PR Management ---
 
 def github_api(method, path, body=None):
@@ -676,6 +716,32 @@ def lambda_handler(event, context):
             content = b64.b64decode(index_data.get('content', '')).decode()
             names = re.findall(r'<h3>([^<]+)</h3>', content)
             return {'statusCode': 200, 'headers': cors, 'body': json.dumps({'members': names})}
+
+        elif action == 'consistency-report':
+            # #37: cross-check cards (site) vs Cognito users vs data.json counter.
+            import base64 as b64, re
+            repo_map = {'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland', 'uk': 'golden-jackets-uk', 'chile': 'golden-jackets-chile', 'india': 'golden-jackets-india', 'france': 'golden-jackets-france', 'usa': 'golden-jackets-usa', 'italy': 'golden-jackets-italy', 'ecuador': 'golden-jackets-ecuador', 'colombia': 'golden-jackets-colombia'}
+            repo = repo_map.get(chapter, '')
+            if not repo:
+                return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'Invalid chapter'})}
+            # 1) cards on the chapter site
+            try:
+                index_data = github_api('GET', f'/repos/goldenjackets-community/{repo}/contents/index.html')
+                content = b64.b64decode(index_data.get('content', '')).decode()
+                cards_count = len(re.findall(r'<div class="member-card', content)) or len(re.findall(r'<h3>[^<]+</h3>', content))
+            except Exception:
+                cards_count = 0
+            # 2) Cognito users in the chapter group
+            cognito_count = len(get_users_in_group(chapter))
+            # 3) counter in the global data.json
+            try:
+                data_raw = github_api('GET', '/repos/goldenjackets-community/golden-jackets-global/contents/data.json')
+                gdata = json.loads(b64.b64decode(data_raw.get('content', '')).decode())
+                counter_count = next((int(c.get('members') or 0) for c in gdata.get('chapters', []) if c.get('id') == chapter), 0)
+            except Exception:
+                counter_count = 0
+            report = build_consistency_report(chapter, cards_count, cognito_count, counter_count)
+            return {'statusCode': 200, 'headers': cors, 'body': json.dumps(report)}
 
         elif action == 'update-photo':
             name = body.get('name', '')
