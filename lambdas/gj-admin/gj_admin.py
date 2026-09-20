@@ -256,19 +256,6 @@ def lambda_handler(event, context):
         if not is_global_admin and chapter not in caller_groups and action not in skip_chapter_actions:
             return {'statusCode': 403, 'headers': cors, 'body': json.dumps({'error': 'Access denied to this chapter'})}
 
-        # Audit log: who did what, on which chapter/target. Emitted as JSON for CloudWatch Logs Insights.
-        _audit = {
-            'audit': True,
-            'actor': caller_email or 'unknown',
-            'action': action,
-            'chapter': chapter,
-            'is_global_admin': is_global_admin,
-        }
-        for _k in ('pr_number', 'pr', 'email', 'member', 'job_id', 'title'):
-            if body.get(_k) not in (None, ''):
-                _audit[_k] = body.get(_k)
-        print('AUDIT ' + json.dumps(_audit, default=str))
-
         if action == 'list-users':
             if is_global_admin and not chapter:
                 # Global admin without chapter filter: show all
@@ -641,6 +628,19 @@ def lambda_handler(event, context):
                 Message="New topic suggestion!\n\nFrom: " + name + " (" + email + ")\nType: " + stype + "\nTopic: " + topic
             )
             return {"statusCode": 200, "headers": cors, "body": json.dumps({"message": "Suggestion received!"})}
+        elif action == 'toggle-live':
+            on = body.get('on', False)
+            result = toggle_live_banner(chapter, on)
+            if 'error' in result:
+                return {'statusCode': 400, 'headers': cors, 'body': json.dumps(result)}
+            return {'statusCode': 200, 'headers': cors, 'body': json.dumps(result)}
+
+        elif action == 'live-status':
+            result = get_live_status(chapter)
+            if 'error' in result:
+                return {'statusCode': 400, 'headers': cors, 'body': json.dumps(result)}
+            return {'statusCode': 200, 'headers': cors, 'body': json.dumps(result)}
+
         else:
             return {'statusCode': 400, 'headers': cors, 'body': json.dumps({'error': 'unknown action'})}
 
@@ -862,3 +862,64 @@ def get_chapter_status(code):
         return resp.get('Item', {'status': 'in_progress'})
     except:
         return {'status': 'in_progress'}
+
+
+# --- AO VIVO banner toggle (manual live control) ---
+
+_LIVE_REPO_MAP = {
+    'brazil': 'golden-jackets-brazil', 'poland': 'golden-jackets-poland',
+    'uk': 'golden-jackets-uk', 'chile': 'golden-jackets-chile',
+    'india': 'golden-jackets-india', 'france': 'golden-jackets-france',
+    'usa': 'golden-jackets-usa', 'italy': 'golden-jackets-italy',
+    'ecuador': 'golden-jackets-ecuador', 'colombia': 'golden-jackets-colombia'
+}
+
+
+def get_live_status(chapter):
+    """Return whether the AO VIVO banner is currently ON in the site's index.html."""
+    import base64
+    repo = _LIVE_REPO_MAP.get(chapter, '')
+    if not repo:
+        return {'error': 'Invalid chapter'}
+    data = github_api('GET', f'/repos/goldenjackets-community/{repo}/contents/index.html')
+    if not isinstance(data, dict) or 'content' not in data:
+        return {'error': 'Could not read index.html'}
+    content = base64.b64decode(data['content']).decode('utf-8')
+    if 'var LIVE_ON = true;' in content:
+        return {'on': True}
+    if 'var LIVE_ON = false;' in content:
+        return {'on': False}
+    return {'error': 'LIVE_ON flag not found in index.html'}
+
+
+def toggle_live_banner(chapter, on):
+    """Flip the LIVE_ON flag in the site's index.html and commit it (deploy auto-runs)."""
+    import base64
+    repo = _LIVE_REPO_MAP.get(chapter, '')
+    if not repo:
+        return {'error': 'Invalid chapter'}
+    data = github_api('GET', f'/repos/goldenjackets-community/{repo}/contents/index.html')
+    if not isinstance(data, dict) or 'content' not in data:
+        return {'error': 'Could not read index.html'}
+    content = base64.b64decode(data['content']).decode('utf-8')
+    sha = data['sha']
+
+    want = 'var LIVE_ON = true;' if on else 'var LIVE_ON = false;'
+    other = 'var LIVE_ON = false;' if on else 'var LIVE_ON = true;'
+
+    if want in content:
+        return {'on': bool(on), 'message': 'Already ' + ('ON' if on else 'OFF')}
+    if other not in content:
+        return {'error': 'LIVE_ON flag not found in index.html'}
+
+    content = content.replace(other, want, 1)
+    payload = {
+        'message': ('chore: AO VIVO banner ON' if on else 'chore: AO VIVO banner OFF'),
+        'content': base64.b64encode(content.encode('utf-8')).decode('ascii'),
+        'sha': sha,
+        'branch': 'main'
+    }
+    result = github_api('PUT', f'/repos/goldenjackets-community/{repo}/contents/index.html', payload)
+    if isinstance(result, dict) and 'error' in result:
+        return {'error': result['error']}
+    return {'on': bool(on), 'message': ('AO VIVO ligado! Faixa aparece no site em ~1min.' if on else 'AO VIVO desligado. Faixa some em ~1min.')}
