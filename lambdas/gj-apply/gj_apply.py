@@ -229,12 +229,36 @@ def insert_member_card(index_content, card, member_type):
 
     return index_content
 
-def lambda_handler(event, context):
-    cors = {
-        'Access-Control-Allow-Origin': '*',
+def _allowed_origins():
+    """CORS allowlist for the public apply form.
+
+    Defaults to the chapter domains already known in REPO_MAP (every site that
+    hosts the form), as full https origins with and without www. Can be
+    overridden via the ALLOWED_ORIGINS env var (comma-separated full origins).
+    """
+    env = os.environ.get('ALLOWED_ORIGINS', '').strip()
+    if env:
+        return {o.strip().lower() for o in env.split(',') if o.strip()}
+    origins = set()
+    for host in REPO_MAP:
+        origins.add(f'https://{host}'.lower())
+    return origins
+
+def _cors_headers(event):
+    """Reflect the request Origin only when it is on the allowlist. Unknown
+    origins get an empty Allow-Origin (browser blocks the cross-origin call)."""
+    headers = event.get('headers', {}) or {}
+    origin = headers.get('origin', '') or headers.get('Origin', '')
+    allow_origin = origin if origin.lower() in _allowed_origins() else ''
+    return {
+        'Access-Control-Allow-Origin': allow_origin,
         'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS'
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Vary': 'Origin',
     }
+
+def lambda_handler(event, context):
+    cors = _cors_headers(event)
 
     if event.get('requestContext', {}).get('http', {}).get('method') == 'OPTIONS':
         return {'statusCode': 200, 'headers': cors, 'body': ''}
