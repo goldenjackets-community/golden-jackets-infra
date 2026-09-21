@@ -47,6 +47,12 @@ ns-XXXX.awsdns-XX.co.uk
 ## After site is live
 
 - [ ] Test: `curl -sI https://{DOMAIN}` → should return 200
+- [ ] **Rodar o validador pós-provisionamento** (checa infra + integrações + site de uma vez):
+  ```bash
+  ./new-chapter/validate-chapter.sh {CODE} {DOMAIN}
+  # ex.: ./new-chapter/validate-chapter.sh peru goldenjackets.pe
+  ```
+  Só anunciar quando o resultado for `✅ Chapter validado` (0 ❌). Avisos ⚠️ são manuais/opcionais.
 - [ ] Send Chapter Leader Guide PDF
 - [ ] Announce on LinkedIn / WhatsApp Chapter Leaders group
 - [ ] Update global site stats if needed (`data.json`)
