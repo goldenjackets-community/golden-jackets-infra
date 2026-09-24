@@ -1,0 +1,76 @@
+name: Suspend / Reactivate User
+
+# Disable (suspend) or enable (reactivate) a Cognito user in the shared user pool.
+# Reversible: disable does NOT delete the user, it only blocks sign-in.
+# Runs via OIDC as github-actions-deploy (no static keys).
+
+on:
+  workflow_dispatch:
+    inputs:
+      username:
+        description: "User email / username in the pool"
+        required: true
+        type: string
+      operation:
+        description: "disable = suspend, enable = reactivate"
+        required: true
+        type: choice
+        options:
+          - disable
+          - enable
+        default: disable
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  suspend-user:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_GJ }}:role/github-actions-deploy
+          aws-region: us-east-1
+
+      - name: Validate input
+        env:
+          USERNAME: ${{ inputs.username }}
+        run: |
+          if [ -z "$USERNAME" ]; then
+            echo "::error::username is required"
+            exit 1
+          fi
+          echo "Target user: $USERNAME"
+
+      - name: Apply operation
+        env:
+          USERNAME: ${{ inputs.username }}
+          OP: ${{ inputs.operation }}
+        run: |
+          POOL="us-east-1_Z0VzzrmIX"
+
+          # Confirm the user exists before acting
+          if ! aws cognito-idp admin-get-user --user-pool-id "$POOL" --username "$USERNAME" >/dev/null 2>&1; then
+            echo "::error::User $USERNAME not found in pool $POOL"
+            exit 1
+          fi
+
+          if [ "$OP" = "disable" ]; then
+            aws cognito-idp admin-disable-user --user-pool-id "$POOL" --username "$USERNAME"
+            echo "🔒 Suspended: $USERNAME"
+          elif [ "$OP" = "enable" ]; then
+            aws cognito-idp admin-enable-user --user-pool-id "$POOL" --username "$USERNAME"
+            echo "✅ Reactivated: $USERNAME"
+          else
+            echo "::error::Unknown operation: $OP"
+            exit 1
+          fi
+
+      - name: Report status
+        env:
+          USERNAME: ${{ inputs.username }}
+        run: |
+          POOL="us-east-1_Z0VzzrmIX"
+          ENABLED=$(aws cognito-idp admin-get-user --user-pool-id "$POOL" --username "$USERNAME" --query "Enabled" --output text)
+          echo "Current Enabled state for $USERNAME: $ENABLED"
